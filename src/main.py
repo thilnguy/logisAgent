@@ -63,6 +63,14 @@ if not st.session_state.orders:
     st.info("Veuillez générer des commandes pour lancer le profilage.")
     st.stop()
 
+st.markdown("---")
+st.subheader("📋 WMS Data Feed (Audit)")
+st.caption("Dữ liệu thô từ hệ thống kho (Randomized). Người dùng có thể kiểm tra ở đây.")
+# Render WMS Orders as a visually clear Dataframe
+order_data = [{"Order ID": o.order_id, "Client": o.address.name, "Weight (kg)": o.weight_kg, "Time Window": f"{o.time_window.start_minute//60:02d}:00 - {o.time_window.end_minute//60:02d}:00", "Unloading (mins)": o.service_time_minutes} for o in st.session_state.orders]
+df_audit = pd.DataFrame(order_data)
+st.dataframe(df_audit, use_container_width=True)
+
 # 2. Inventory Agent Validation
 agent = InventoryAgent(stock_mock)
 valid_orders, invalid_orders = agent.validate_orders(st.session_state.orders)
@@ -117,6 +125,7 @@ if "solution" in st.session_state:
         "maintenance_euro": 0.0,
         "co2_tax_euro": 0.0
     }
+    tco_truck_details = []
     gantt_data = []
     pydeck_lines = []
     
@@ -187,35 +196,25 @@ if "solution" in st.session_state:
         tco_breakdown['maintenance_euro'] += tco['maintenance_euro']
         tco_breakdown['co2_tax_euro'] += tco['co2_tax_euro']
         
-    # --- UI RENDERING ---
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        st.subheader("💶 Financial Dashboard (TCO)")
-        st.metric("Total Cost of Ownership", f"{total_tco:.2f} €", "Incl. Wages, Fuel, Maintenance, CO2 Tax")
-        
-        # Audit View: Breakdown pie chart
-        df_tco = pd.DataFrame({
-            "Cost Category": ["Fuel", "Wages", "Maintenance", "CO2 Tax"],
-            "Cost (€)": [tco_breakdown["fuel_euro"], tco_breakdown["wage_euro"], tco_breakdown["maintenance_euro"], tco_breakdown["co2_tax_euro"]]
+        tco_truck_details.append({
+            "Camion": truck.truck_id,
+            "KM": round(total_kms, 1),
+            "Heures": round(route_time_hours, 2),
+            "Gazole (€)": round(tco['fuel_euro'], 2),
+            "Salaire (€)": round(tco['wage_euro'], 2),
+            "Entretien (€)": round(tco['maintenance_euro'], 2),
+            "Taxe CO2 (€)": round(tco['co2_tax_euro'], 2),
+            "Total (€)": round(tco['total_tco_euro'], 2)
         })
-        fig_pie = px.pie(df_tco, values="Cost (€)", names="Cost Category", title="TCO Breakdown (Audit view)")
-        fig_pie.update_layout(height=300, margin=dict(t=30, b=0, l=0, r=0))
-        st.plotly_chart(fig_pie, use_container_width=True)
         
-        df_gantt = pd.DataFrame(gantt_data)
-        fig = px.timeline(df_gantt, x_start="Start", x_end="End", y="Task", color="Phase", text="Location", hover_name="Location", title="Dispatch Timeline (Driving vs Unloading)")
-        fig.update_traces(textposition='inside', insidetextanchor='middle')
-        fig.update_yaxes(autorange="reversed")
-        # Optimization of visual thickness AND keeping legend
-        fig.update_layout(
-            height=350, 
-            margin=dict(t=30, b=0, l=0, r=0), 
-            legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5, title="")
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    # --- UI RENDERING (GRID & TABS) ---
+    st.markdown("---")
+    st.subheader("📈 Operation Dashboard")
+    
+    # Using Tabs for modularity and preventing clutter
+    tab1, tab2, tab3 = st.tabs(["🌐 Digital Twin (Map)", "📊 Timeline Gantt", "💶 Financial Audit (TCO)"])
 
-    with col2:
-        st.subheader("🌐 Digital Twin GPS (Pydeck)")
+    with tab1:
         # Plot Pydeck
         view_state = pdk.ViewState(latitude=47.93, longitude=1.9, zoom=10, pitch=45)
         layer = pdk.Layer(
@@ -229,3 +228,34 @@ if "solution" in st.session_state:
             pickable=True
         )
         st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip={"text": "{truck}"}))
+
+    with tab2:
+        df_gantt = pd.DataFrame(gantt_data)
+        fig = px.timeline(df_gantt, x_start="Start", x_end="End", y="Task", color="Phase", text="Location", hover_name="Location", title="Dispatch Timeline (Driving vs Unloading)")
+        fig.update_traces(textposition='inside', insidetextanchor='middle')
+        fig.update_yaxes(autorange="reversed")
+        fig.update_layout(
+            height=350, 
+            margin=dict(t=30, b=0, l=0, r=0), 
+            legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5, title="")
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+    with tab3:
+        # Nested Grid for Finances
+        colA, colB = st.columns([1, 1])
+        with colA:
+            st.metric("Total Cost of Ownership", f"{total_tco:.2f} €", "Incl. Wages, Fuel, Maintenance, CO2 Tax")
+            st.markdown("#### 🔍 Matrice d'Audit Financier par Camion")
+            df_tco_dev = pd.DataFrame(tco_truck_details)
+            st.dataframe(df_tco_dev, use_container_width=True)
+            st.info("Cette table permet aux auditeurs de vérifier le calcul TCO véhicule par véhicule.")
+        with colB:
+            # Audit View: Breakdown pie chart
+            df_tco = pd.DataFrame({
+                "Cost Category": ["Fuel", "Wages", "Maintenance", "CO2 Tax"],
+                "Cost (€)": [tco_breakdown["fuel_euro"], tco_breakdown["wage_euro"], tco_breakdown["maintenance_euro"], tco_breakdown["co2_tax_euro"]]
+            })
+            fig_pie = px.pie(df_tco, values="Cost (€)", names="Cost Category")
+            fig_pie.update_layout(height=280, margin=dict(t=10, b=0, l=0, r=0))
+            st.plotly_chart(fig_pie, use_container_width=True)
