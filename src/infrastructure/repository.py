@@ -37,12 +37,24 @@ class LogisticsRepository:
                 tw = TimeWindow(start_minute=480, end_minute=1140) # 08:00 - 19:00
             
             addr = Address(name=c["name"], latitude=c["latitude"], longitude=c["longitude"])
+            
+            # Weight and Service Time are correlated (heavier = longer unloading)
+            weight_service_map = {
+                50: 10,    # Colis léger → 10 min
+                200: 15,   # Palette légère → 15 min
+                400: 20,   # Palette standard → 20 min
+                800: 30,   # Demi-camion → 30 min
+                1000: 45,  # Chargement complet → 45 min
+            }
+            weight = random.choice(list(weight_service_map.keys()))
+            service_time = weight_service_map[weight]
+            
             order = DeliveryOrder(
                 order_id=f"ORD-{random.randint(1000, 9999)}",
                 address=addr,
-                weight_kg=random.choice([50, 200, 400, 800, 1000]),
+                weight_kg=weight,
                 time_window=tw,
-                service_time_minutes=random.choice([15, 30, 45]), # Varying service times
+                service_time_minutes=service_time,
                 priority=1 if tw_type == "morning" else 2
             )
             orders.append(order)
