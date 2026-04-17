@@ -103,7 +103,8 @@ if st.button("🚀 Exécuter Solveur CVRPTW", type="primary"):
         if solution is None:
             st.error("Aucune solution trouvée respectant les fenêtres de temps (Time Windows) ou capacités.")
         else:
-            st.session_state.solution = solution
+            st.session_state.solution = solution['routes']
+            st.session_state.dropped_orders = solution.get('dropped_orders', [])
             st.session_state.dist_matrix = dist_matrix
             st.session_state.time_matrix = time_matrix
             st.session_state.all_nodes = all_nodes
@@ -112,7 +113,16 @@ if "solution" in st.session_state:
     solution = st.session_state.solution
     dist_matrix = st.session_state.dist_matrix
     all_nodes = st.session_state.all_nodes
-    st.success("Logistique optimisée ! Temps de service & Fenêtres respectés.")
+    
+    # V4 Phase 10: Display dropped orders warning
+    dropped = st.session_state.get('dropped_orders', [])
+    if dropped:
+        st.warning(f"⚠️ **{len(dropped)} commande(s) non-livrée(s)** (reportée(s) au lendemain)")
+        with st.expander("📋 Détails des commandes reportées"):
+            df_dropped = pd.DataFrame(dropped)
+            st.dataframe(df_dropped, use_container_width=True)
+    else:
+        st.success("✅ Toutes les commandes livrées avec succès.")
     
     # 3. Process TCO and metrics
     total_tco = 0.0

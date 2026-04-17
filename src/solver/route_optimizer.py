@@ -99,6 +99,15 @@ class EnterpriseRouteOptimizer:
         # (Hard constraints cause infeasibility with tight time windows.
         #  Real-world fleets use post-optimization compliance auditing.)
 
+        # V4 Phase 10: Allow Dropping Undeliverable Orders (Graceful Degradation)
+        # Instead of failing entirely when one order is infeasible, the solver
+        # can skip it at a high penalty cost (simulating re-scheduling next day).
+        self.num_depots = len([n for n in self.nodes if hasattr(n, 'depot_id')])
+        penalty_per_drop = 50000  # High cost to discourage unnecessary drops
+        for i in range(self.num_depots, self.num_nodes):  # Only delivery nodes, not depots
+            index = manager.NodeToIndex(i)
+            routing.AddDisjunction([index], penalty_per_drop)
+
         # Instantiate search parameters
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()
         search_parameters.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PARALLEL_CHEAPEST_INSERTION
@@ -160,5 +169,23 @@ class EnterpriseRouteOptimizer:
                     "total_load_kg": route_load,
                     "break_info": break_info
                 })
+        
+        # V4 Phase 10: Detect dropped (undelivered) orders
+        served_node_indices = set()
+        for r in routes:
+            for stop in r['route']:
+                served_node_indices.add(stop['node_index'])
+        
+        dropped_orders = []
+        for i in range(self.num_depots, self.num_nodes):
+            if i not in served_node_indices:
+                node = self.nodes[i]
+                dropped_orders.append({
+                    "order_id": getattr(node, 'order_id', f'N/A-{i}'),
+                    "address": node.address.name,
+                    "weight_kg": node.weight_kg,
+                    "reason": "Time Window ou Capacité incompatible"
+                })
+                logger.warning(f"⚠️ Dropped order: {node.address.name} ({node.weight_kg}kg)")
                 
-        return routes
+        return {"routes": routes, "dropped_orders": dropped_orders}
