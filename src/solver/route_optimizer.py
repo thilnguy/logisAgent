@@ -30,6 +30,10 @@ class EnterpriseRouteOptimizer:
         manager = pywrapcp.RoutingIndexManager(self.num_nodes, self.num_vehicles, self.starts, self.ends)
         routing = pywrapcp.RoutingModel(manager)
 
+        # Fixed Vehicle Activation Costs (V4 Phase 8)
+        for vid, t in enumerate(self.trucks):
+            routing.SetFixedCostOfVehicle(int(t.fixed_cost_euro * 100), vid)  # Scale to cents for integer solver
+
         # Distance Callback
         def distance_callback(from_index, to_index):
             from_node = manager.IndexToNode(from_index)

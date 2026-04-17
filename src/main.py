@@ -90,11 +90,11 @@ if st.button("🚀 Exécuter Solveur CVRPTW", type="primary"):
         
         # Build Enterprise Fleet (Multi-Depot & Overlapping schedules)
         trucks = [
-            Truck(truck_id="T1-VUL-1", type_name="3.5t Downtown A", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0),
-            Truck(truck_id="T1-VUL-2", type_name="3.5t Downtown B", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0),
-            Truck(truck_id="T2-PL-1", type_name="12t Ext A", capacity_kg=5000, start_depot_id="D1", end_depot_id="D2", co2_emission_rate_g_per_km=650.0, wage_per_hour_euro=25.0),
-            Truck(truck_id="T2-PL-2", type_name="12t Ext B", capacity_kg=5000, start_depot_id="D2", end_depot_id="D1", co2_emission_rate_g_per_km=650.0, wage_per_hour_euro=27.0),
-            Truck(truck_id="T3-HGV", type_name="44t Artenay", capacity_kg=25000, start_depot_id="D2", end_depot_id="D2", co2_emission_rate_g_per_km=950.0, wage_per_hour_euro=30.0)
+            Truck(truck_id="T1-VUL-1", type_name="3.5t Downtown A", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0, fixed_cost_euro=120.0),
+            Truck(truck_id="T1-VUL-2", type_name="3.5t Downtown B", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0, fixed_cost_euro=120.0),
+            Truck(truck_id="T2-PL-1", type_name="12t Ext A", capacity_kg=5000, start_depot_id="D1", end_depot_id="D2", co2_emission_rate_g_per_km=650.0, wage_per_hour_euro=25.0, fixed_cost_euro=250.0),
+            Truck(truck_id="T2-PL-2", type_name="12t Ext B", capacity_kg=5000, start_depot_id="D2", end_depot_id="D1", co2_emission_rate_g_per_km=650.0, wage_per_hour_euro=27.0, fixed_cost_euro=250.0),
+            Truck(truck_id="T3-HGV", type_name="44t Artenay", capacity_kg=25000, start_depot_id="D2", end_depot_id="D2", co2_emission_rate_g_per_km=950.0, wage_per_hour_euro=30.0, fixed_cost_euro=450.0)
         ]
         
         # Calculate matrices via dynamic Webhook trigger
@@ -210,7 +210,7 @@ if "solution" in st.session_state:
         route_time_hours = (node_seq[-1]['time_min'] - node_seq[0]['time_min']) / 60.0
         
         tco = calculate_tco(total_kms, route_time_hours, truck.wage_per_hour_euro, truck.maintenance_per_km_euro, truck.co2_emission_rate_g_per_km)
-        total_tco += tco['total_tco_euro']
+        total_tco += tco['total_tco_euro'] + truck.fixed_cost_euro
         tco_breakdown['fuel_euro'] += tco['fuel_euro']
         tco_breakdown['wage_euro'] += tco['wage_euro']
         tco_breakdown['maintenance_euro'] += tco['maintenance_euro']
@@ -218,13 +218,15 @@ if "solution" in st.session_state:
         
         tco_truck_details.append({
             "Camion": truck.truck_id,
+            "Type": truck.type_name,
             "KM": round(total_kms, 1),
             "Heures": round(route_time_hours, 2),
+            "Activation (€)": round(truck.fixed_cost_euro, 2),
             "Gazole (€)": round(tco['fuel_euro'], 2),
             "Salaire (€)": round(tco['wage_euro'], 2),
             "Entretien (€)": round(tco['maintenance_euro'], 2),
             "Taxe CO2 (€)": round(tco['co2_tax_euro'], 2),
-            "Total (€)": round(tco['total_tco_euro'], 2)
+            "Total (€)": round(tco['total_tco_euro'] + truck.fixed_cost_euro, 2)
         })
         
     # --- UI RENDERING (GRID & TABS) ---

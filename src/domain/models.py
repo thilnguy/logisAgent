@@ -34,3 +34,4 @@ class Truck(BaseModel):
     co2_emission_rate_g_per_km: float
     wage_per_hour_euro: float = Field(default=25.0)
     maintenance_per_km_euro: float = Field(default=0.8)
+    fixed_cost_euro: float = Field(default=0.0, description="Coût fixe d'activation du véhicule (assurance, amortissement)")
