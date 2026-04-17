@@ -19,82 +19,98 @@
         {
             "name": "Boutique Orléans Centre",
             "latitude": 47.9029,
-            "longitude": 1.9036
+            "longitude": 1.9036,
+            "zone": "CITY"
         },
         {
             "name": "Centre Commercial Place d'Arc",
             "latitude": 47.9073,
-            "longitude": 1.9031
+            "longitude": 1.9031,
+            "zone": "CITY"
         },
         {
             "name": "Client Olivet",
             "latitude": 47.8643,
-            "longitude": 1.9054
+            "longitude": 1.9054,
+            "zone": "SOUTH"
         },
         {
             "name": "Client Fleury-les-Aubrais",
             "latitude": 47.9312,
-            "longitude": 1.9161
+            "longitude": 1.9161,
+            "zone": "NORTH"
         },
         {
             "name": "Client Saint-Jean-de-Braye",
             "latitude": 47.9133,
-            "longitude": 1.9686
+            "longitude": 1.9686,
+            "zone": "CITY"
         },
         {
             "name": "Boutique Saran",
             "latitude": 47.9521,
-            "longitude": 1.8742
+            "longitude": 1.8742,
+            "zone": "NORTH"
         },
         {
             "name": "Livraison La Chapelle-Saint-Mesmin",
             "latitude": 47.8876,
-            "longitude": 1.8354
+            "longitude": 1.8354,
+            "zone": "SOUTH"
         },
         {
             "name": "Hypermarché Ingré",
             "latitude": 47.9200,
-            "longitude": 1.8200
+            "longitude": 1.8200,
+            "zone": "NORTH"
         },
         {
             "name": "Client Saint-Denis-en-Val",
             "latitude": 47.8700,
-            "longitude": 1.9500
+            "longitude": 1.9500,
+            "zone": "SOUTH"
         },
         {
             "name": "Dépôt Gidy",
             "latitude": 47.9800,
-            "longitude": 1.8300
+            "longitude": 1.8300,
+            "zone": "NORTH"
         },
         {
             "name": "Zone Artisanale Chécy",
             "latitude": 47.8900,
-            "longitude": 2.0200
+            "longitude": 2.0200,
+            "zone": "CITY"
         },
         {
             "name": "Magasin Artenay",
             "latitude": 48.0800,
-            "longitude": 1.8700
+            "longitude": 1.8700,
+            "zone": "NORTH"
         },
         {
             "name": "Boutique Saint-Pryvé-Saint-Mesmin",
             "latitude": 47.8800,
-            "longitude": 1.8700
+            "longitude": 1.8700,
+            "zone": "SOUTH"
         },
         {
             "name": "Client Cercottes",
             "latitude": 47.9800,
-            "longitude": 1.8800
+            "longitude": 1.8800,
+            "zone": "NORTH"
         },
         {
             "name": "Client Chaingy",
             "latitude": 47.8800,
-            "longitude": 1.7700
+            "longitude": 1.7700,
+            "zone": "SOUTH"
         },
         {
             "name": "Centre Ormes",
             "latitude": 47.9400,
-            "longitude": 1.8200
+            "longitude": 1.8200,
+            "zone": "NORTH"
         }
     ]
 }

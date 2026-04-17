@@ -62,7 +62,7 @@ st.markdown("---")
 st.subheader("📋 WMS Data Feed (Audit)")
 st.caption("Dữ liệu thô từ hệ thống kho (Randomized). Người dùng có thể kiểm tra ở đây.")
 # Render WMS Orders as a visually clear Dataframe
-order_data = [{"Order ID": o.order_id, "Client": o.address.name, "Weight (kg)": o.weight_kg, "Time Window": f"{o.time_window.start_minute//60:02d}:00 - {o.time_window.end_minute//60:02d}:00", "Unloading (mins)": o.service_time_minutes} for o in st.session_state.orders]
+order_data = [{"Order ID": o.order_id, "Client": o.address.name, "Zone": o.zone or "N/A", "Weight (kg)": o.weight_kg, "Time Window": f"{o.time_window.start_minute//60:02d}:00 - {o.time_window.end_minute//60:02d}:00", "Unloading (mins)": o.service_time_minutes} for o in st.session_state.orders]
 df_audit = pd.DataFrame(order_data)
 st.dataframe(df_audit, use_container_width=True)
 
@@ -83,13 +83,13 @@ if st.button("🚀 Exécuter Solveur CVRPTW", type="primary"):
         # Combine valid nodes: Depots first, then valid_orders
         all_nodes = depots + valid_orders
         
-        # Build Enterprise Fleet (Multi-Depot & Overlapping schedules)
+        # Build Enterprise Fleet (Multi-Depot & Territory Zones)
         trucks = [
-            Truck(truck_id="T1-VUL-1", type_name="3.5t Downtown A", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0, fixed_cost_euro=35.0),
-            Truck(truck_id="T1-VUL-2", type_name="3.5t Downtown B", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0, fixed_cost_euro=35.0),
-            Truck(truck_id="T2-PL-1", type_name="12t Ext A", capacity_kg=5000, start_depot_id="D1", end_depot_id="D2", co2_emission_rate_g_per_km=650.0, wage_per_hour_euro=25.0, fixed_cost_euro=65.0),
-            Truck(truck_id="T2-PL-2", type_name="12t Ext B", capacity_kg=5000, start_depot_id="D2", end_depot_id="D1", co2_emission_rate_g_per_km=650.0, wage_per_hour_euro=27.0, fixed_cost_euro=65.0),
-            Truck(truck_id="T3-HGV", type_name="44t Artenay", capacity_kg=25000, start_depot_id="D2", end_depot_id="D2", co2_emission_rate_g_per_km=950.0, wage_per_hour_euro=30.0, fixed_cost_euro=120.0)
+            Truck(truck_id="T1-VUL-1", type_name="3.5t Downtown A", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0, fixed_cost_euro=35.0, allowed_zones=["CITY", "SOUTH"]),
+            Truck(truck_id="T1-VUL-2", type_name="3.5t Downtown B", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0, fixed_cost_euro=35.0, allowed_zones=["CITY", "NORTH"]),
+            Truck(truck_id="T2-PL-1", type_name="12t Ext A", capacity_kg=5000, start_depot_id="D1", end_depot_id="D2", co2_emission_rate_g_per_km=650.0, wage_per_hour_euro=25.0, fixed_cost_euro=65.0, allowed_zones=["NORTH"]),
+            Truck(truck_id="T2-PL-2", type_name="12t Ext B", capacity_kg=5000, start_depot_id="D2", end_depot_id="D1", co2_emission_rate_g_per_km=650.0, wage_per_hour_euro=27.0, fixed_cost_euro=65.0, allowed_zones=["SOUTH"]),
+            Truck(truck_id="T3-HGV", type_name="44t Artenay", capacity_kg=25000, start_depot_id="D2", end_depot_id="D2", co2_emission_rate_g_per_km=950.0, wage_per_hour_euro=30.0, fixed_cost_euro=120.0, allowed_zones=["NORTH"])
         ]
         
         # Calculate matrices via dynamic Webhook trigger
@@ -237,6 +237,7 @@ if "solution" in st.session_state:
         tco_truck_details.append({
             "Camion": truck.truck_id,
             "Type": truck.type_name,
+            "Zones": ", ".join(truck.allowed_zones),
             "KM": round(total_kms, 1),
             "Heures": round(route_time_hours, 2),
             "Activation (€)": round(truck.fixed_cost_euro, 2),

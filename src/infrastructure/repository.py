@@ -55,7 +55,8 @@ class LogisticsRepository:
                 weight_kg=weight,
                 time_window=tw,
                 service_time_minutes=service_time,
-                priority=1 if tw_type == "morning" else 2
+                priority=1 if tw_type == "morning" else 2,
+                zone=c.get("zone")
             )
             orders.append(order)
             
