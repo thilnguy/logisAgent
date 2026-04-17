@@ -11,6 +11,7 @@ from infrastructure.repository import LogisticsRepository
 from infrastructure.tco_calculator import calculate_tco
 from solver.distance_matrix import RoutingMatrix
 from solver.route_optimizer import EnterpriseRouteOptimizer
+from domain.traffic_agent import TrafficAgent
 
 st.set_page_config(page_title="DSS Digital Twin | LogisAgent", layout="wide", page_icon="🏢")
 
@@ -33,9 +34,18 @@ stock_mock["ORD-5555"] = 0
 st.sidebar.header("⚙️ Configuration DSS")
 num_orders = st.sidebar.slider("Volume de commandes", 3, 7, 5)
 
-scenario = st.sidebar.checkbox("🚨 Simuler: Congestion Axe Nord (Pôle 45 / A10)")
-if scenario:
-    st.sidebar.warning("Le blocage de l'A10 sature la D2020. Ralentissement massif des camions au Nord.")
+# Live API Integration instead of Manual Checkbox
+st.sidebar.markdown("---")
+st.sidebar.subheader("📡 Live API (Bison Futé)")
+traffic_agent = TrafficAgent()
+traffic_data = traffic_agent.check_a10_north()
+is_congested = (traffic_data["status"] == "CRITICAL")
+
+if is_congested:
+    st.sidebar.error(f"🔴 **{traffic_data['status']}**\n\n{traffic_data['message']}")
+else:
+    st.sidebar.success(f"🟢 **{traffic_data['status']}**\n\n{traffic_data['message']}")
+st.sidebar.markdown("---")
 
 generate_btn = st.sidebar.button("📦 Simuler Flux Entrant (WMS)")
 
@@ -77,9 +87,9 @@ if st.button("🚀 Exécuter Solveur CVRPTW", type="primary"):
             Truck(truck_id="T3-HGV", type_name="44t Artenay", capacity_kg=25000, start_depot_id="D2", end_depot_id="D2", co2_emission_rate_g_per_km=950.0, wage_per_hour_euro=30.0)
         ]
         
-        # Calculate matrices
+        # Calculate matrices via dynamic Webhook trigger
         router = RoutingMatrix([o.address if hasattr(o, 'address') else o for o in all_nodes])
-        dist_matrix, time_matrix = router.get_matrices(apply_congestion_scenario=scenario)
+        dist_matrix, time_matrix = router.get_matrices(apply_congestion_scenario=is_congested)
         
         # Optimize
         optimizer = EnterpriseRouteOptimizer(all_nodes, trucks, dist_matrix, time_matrix)
