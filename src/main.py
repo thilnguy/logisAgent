@@ -26,10 +26,8 @@ def load_data():
 repo = load_data()
 depots = repo.get_active_depots()
 
-# Provide simulated Inventory
+# Provide simulated Inventory (all items in stock)
 stock_mock = {f"ORD-{i}": 100 for i in range(1000, 9999)}
-# Randomly make 1 order out of stock to show the agent working
-stock_mock["ORD-5555"] = 0 
 
 st.sidebar.header("⚙️ Configuration DSS")
 num_orders = st.sidebar.slider("Volume de commandes (Scalability Test)", 5, 15, 12)
@@ -54,9 +52,6 @@ if "orders" not in st.session_state:
     
 if generate_btn:
     orders = repo.fetch_daily_orders(num_orders)
-    # inject the fake 5555 order sometimes to trigger inventory issue
-    if len(orders) > 0 and num_orders % 2 == 0:
-        orders[0].order_id = "ORD-5555"
     st.session_state.orders = orders
 
 if not st.session_state.orders:
@@ -205,6 +200,19 @@ if "solution" in st.session_state:
                     Task=truck.truck_id, Start=arrival_dt.strftime("2026-04-17 %H:%M"), End=end_dt.strftime("2026-04-17 %H:%M"), 
                     Phase="Attente (Time Window)", Location=f"Patienter à: {next_name}"
                 ))
+
+        # V4 Phase 9: Render mandatory driver break on Gantt
+        break_info = route.get('break_info')
+        if break_info:
+            break_start = base_time + timedelta(minutes=break_info['start_min'])
+            break_end = break_start + timedelta(minutes=break_info['duration_min'])
+            gantt_data.append(dict(
+                Task=truck.truck_id, 
+                Start=break_start.strftime("2026-04-17 %H:%M"), 
+                End=break_end.strftime("2026-04-17 %H:%M"),
+                Phase="Pause réglementaire (45m)", 
+                Location="EU 561/2006"
+            ))
 
         total_kms = distance_m / 1000.0
         route_time_hours = (node_seq[-1]['time_min'] - node_seq[0]['time_min']) / 60.0
