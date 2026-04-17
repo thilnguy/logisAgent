@@ -34,14 +34,21 @@ class EnterpriseRouteOptimizer:
         for vid, t in enumerate(self.trucks):
             routing.SetFixedCostOfVehicle(int(t.fixed_cost_euro * 100), vid)  # Scale to cents for integer solver
 
-        # Distance Callback
-        def distance_callback(from_index, to_index):
-            from_node = manager.IndexToNode(from_index)
-            to_node = manager.IndexToNode(to_index)
-            return self.dist_matrix[from_node][to_node]
-
-        transit_callback_index = routing.RegisterTransitCallback(distance_callback)
-        routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
+        # V4 Phase 12: Per-Vehicle Arc Cost (Load Factor Optimization)
+        # Heavier trucks cost more per km → solver prefers smaller trucks for light loads
+        # Cost multiplier: 3.5t=1x, 12t=2x, 44t=4x (proportional to fuel/maintenance)
+        for vid, truck in enumerate(self.trucks):
+            cost_multiplier = max(1, int(truck.capacity_kg / 1500))  # 1500kg base = 1x
+            
+            def make_cost_callback(mult):
+                def vehicle_cost_callback(from_index, to_index):
+                    from_node = manager.IndexToNode(from_index)
+                    to_node = manager.IndexToNode(to_index)
+                    return self.dist_matrix[from_node][to_node] * mult
+                return vehicle_cost_callback
+            
+            callback_index = routing.RegisterTransitCallback(make_cost_callback(cost_multiplier))
+            routing.SetArcCostEvaluatorOfVehicle(callback_index, vid)
 
         # Capacity Dimension
         def demand_callback(from_index):

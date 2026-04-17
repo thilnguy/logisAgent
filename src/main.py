@@ -234,10 +234,15 @@ if "solution" in st.session_state:
         tco_breakdown['maintenance_euro'] += tco['maintenance_euro']
         tco_breakdown['co2_tax_euro'] += tco['co2_tax_euro']
         
+        load_kg = route['total_load_kg']
+        load_factor = round((load_kg / truck.capacity_kg) * 100, 1) if truck.capacity_kg > 0 else 0
+        
         tco_truck_details.append({
             "Camion": truck.truck_id,
             "Type": truck.type_name,
             "Zones": ", ".join(truck.allowed_zones),
+            "Charge (kg)": f"{load_kg}/{int(truck.capacity_kg)}",
+            "Taux Chargement": f"{load_factor}%",
             "KM": round(total_kms, 1),
             "Heures": round(route_time_hours, 2),
             "Activation (€)": round(truck.fixed_cost_euro, 2),
