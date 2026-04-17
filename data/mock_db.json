@@ -1,0 +1,55 @@
+{
+    "DEPOTS": [
+        {
+            "depot_id": "D1",
+            "name": "Sephora DC (Saran)",
+            "latitude": 47.954580,
+            "longitude": 1.884160,
+            "is_active": true
+        },
+        {
+            "depot_id": "D2",
+            "name": "Entrepôt Ormes (Pôle 45)",
+            "latitude": 47.935100,
+            "longitude": 1.834500,
+            "is_active": true
+        }
+    ],
+    "CLIENTS": [
+        {
+            "name": "Boutique Orléans Centre",
+            "latitude": 47.9029,
+            "longitude": 1.9036
+        },
+        {
+            "name": "Centre Commercial Place d'Arc",
+            "latitude": 47.9073,
+            "longitude": 1.9031
+        },
+        {
+            "name": "Client Olivet",
+            "latitude": 47.8643,
+            "longitude": 1.9054
+        },
+        {
+            "name": "Client Fleury-les-Aubrais",
+            "latitude": 47.9312,
+            "longitude": 1.9161
+        },
+        {
+            "name": "Client Saint-Jean-de-Braye",
+            "latitude": 47.9133,
+            "longitude": 1.9686
+        },
+        {
+            "name": "Boutique Saran",
+            "latitude": 47.9521,
+            "longitude": 1.8742
+        },
+        {
+            "name": "Livraison La Chapelle-Saint-Mesmin",
+            "latitude": 47.8876,
+            "longitude": 1.8354
+        }
+    ]
+}
