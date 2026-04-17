@@ -75,11 +75,12 @@ class EnterpriseRouteOptimizer:
             'Time'
         )
         time_dimension = routing.GetDimensionOrDie('Time')
-        # V3.2: Hybrid Time Optimization
-        # 1. Force Balancing: Penalize the single latest arrival across all trucks
-        time_dimension.SetGlobalSpanCostCoefficient(500)
-        # 2. Delayed Start: Minimize duration (End - Start) for each truck to save wages
-        time_dimension.SetSpanCostCoefficientForAllVehicles(100)
+        # V4.1: Rebalanced Objective Weights
+        # SpanCost > GlobalSpanCost → Prioritize "start late, no waiting" over "spread evenly"
+        # 1. Moderate balancing (still uses multiple trucks, but won't force premature dispatch)
+        time_dimension.SetGlobalSpanCostCoefficient(200)
+        # 2. Strong delayed start (heavily penalizes long route duration = eliminates idle waiting)
+        time_dimension.SetSpanCostCoefficientForAllVehicles(300)
 
         # Add Time Windows Logic
         for i, node in enumerate(self.nodes):
