@@ -50,6 +50,51 @@
             "name": "Livraison La Chapelle-Saint-Mesmin",
             "latitude": 47.8876,
             "longitude": 1.8354
+        },
+        {
+            "name": "Hypermarché Ingré",
+            "latitude": 47.9200,
+            "longitude": 1.8200
+        },
+        {
+            "name": "Client Saint-Denis-en-Val",
+            "latitude": 47.8700,
+            "longitude": 1.9500
+        },
+        {
+            "name": "Dépôt Gidy",
+            "latitude": 47.9800,
+            "longitude": 1.8300
+        },
+        {
+            "name": "Zone Artisanale Chécy",
+            "latitude": 47.8900,
+            "longitude": 2.0200
+        },
+        {
+            "name": "Magasin Artenay",
+            "latitude": 48.0800,
+            "longitude": 1.8700
+        },
+        {
+            "name": "Boutique Saint-Pryvé-Saint-Mesmin",
+            "latitude": 47.8800,
+            "longitude": 1.8700
+        },
+        {
+            "name": "Client Cercottes",
+            "latitude": 47.9800,
+            "longitude": 1.8800
+        },
+        {
+            "name": "Client Chaingy",
+            "latitude": 47.8800,
+            "longitude": 1.7700
+        },
+        {
+            "name": "Centre Ormes",
+            "latitude": 47.9400,
+            "longitude": 1.8200
         }
     ]
 }

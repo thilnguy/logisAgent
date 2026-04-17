@@ -32,7 +32,7 @@ stock_mock = {f"ORD-{i}": 100 for i in range(1000, 9999)}
 stock_mock["ORD-5555"] = 0 
 
 st.sidebar.header("⚙️ Configuration DSS")
-num_orders = st.sidebar.slider("Volume de commandes", 3, 7, 5)
+num_orders = st.sidebar.slider("Volume de commandes (Scalability Test)", 5, 15, 12)
 
 # Live API Integration instead of Manual Checkbox
 st.sidebar.markdown("---")
@@ -88,10 +88,12 @@ if st.button("🚀 Exécuter Solveur CVRPTW", type="primary"):
         # Combine valid nodes: Depots first, then valid_orders
         all_nodes = depots + valid_orders
         
-        # Build fleet (Multi-Depot)
+        # Build Enterprise Fleet (Multi-Depot & Overlapping schedules)
         trucks = [
-            Truck(truck_id="T1-VUL", type_name="3.5t Downtown", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0),
-            Truck(truck_id="T2-PL", type_name="12t Ext", capacity_kg=5000, start_depot_id="D1", end_depot_id="D2", co2_emission_rate_g_per_km=650.0, wage_per_hour_euro=25.0),
+            Truck(truck_id="T1-VUL-1", type_name="3.5t Downtown A", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0),
+            Truck(truck_id="T1-VUL-2", type_name="3.5t Downtown B", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0),
+            Truck(truck_id="T2-PL-1", type_name="12t Ext A", capacity_kg=5000, start_depot_id="D1", end_depot_id="D2", co2_emission_rate_g_per_km=650.0, wage_per_hour_euro=25.0),
+            Truck(truck_id="T2-PL-2", type_name="12t Ext B", capacity_kg=5000, start_depot_id="D2", end_depot_id="D1", co2_emission_rate_g_per_km=650.0, wage_per_hour_euro=27.0),
             Truck(truck_id="T3-HGV", type_name="44t Artenay", capacity_kg=25000, start_depot_id="D2", end_depot_id="D2", co2_emission_rate_g_per_km=950.0, wage_per_hour_euro=30.0)
         ]
         
@@ -99,9 +101,9 @@ if st.button("🚀 Exécuter Solveur CVRPTW", type="primary"):
         router = RoutingMatrix([o.address if hasattr(o, 'address') else o for o in all_nodes])
         dist_matrix, time_matrix = router.get_matrices(apply_congestion_scenario=is_congested)
         
-        # Optimize
+        # Optimize with an extended 8-sec search for larger graphs
         optimizer = EnterpriseRouteOptimizer(all_nodes, trucks, dist_matrix, time_matrix)
-        solution = optimizer.solve(time_limit_sec=4)
+        solution = optimizer.solve(time_limit_sec=8)
         
         if solution is None:
             st.error("Aucune solution trouvée respectant les fenêtres de temps (Time Windows) ou capacités.")
@@ -136,9 +138,14 @@ if "solution" in st.session_state:
         distance_m = 0
         node_seq = route['route']
         
-        color = [128, 0, 128] if truck.type_name == "12t Ext" else [0, 128, 255]
-        if truck.type_name == "44t Artenay":
-            color = [255, 165, 0]
+        truck_colors = {
+            "T1-VUL-1": [0, 255, 128],   # Green
+            "T1-VUL-2": [0, 128, 255],   # Blue
+            "T2-PL-1": [153, 50, 204],   # Deep Purple
+            "T2-PL-2": [255, 20, 147],   # Deep Pink
+            "T3-HGV": [255, 165, 0]      # Orange
+        }
+        color = truck_colors.get(truck.truck_id, [255, 255, 255])
 
         for i in range(len(node_seq)-1):
             n_curr = node_seq[i]
@@ -160,30 +167,43 @@ if "solution" in st.session_state:
                 "truck": truck.truck_id
             })
             
-            # Logic to split Service Time (Unloading) and Transit Time (Driving)
+            # Precise V3.1 Logic: Distinguish between Driving and Waiting
             is_depot = n_curr['node_index'] < len(depots)
             node_obj = all_nodes[n_curr['node_index']]
             service_mins = getattr(node_obj, 'service_time_minutes', 0) if not is_depot else 0
             
+            travel_mins = st.session_state.time_matrix[n_curr['node_index']][n_next['node_index']]
+            
             start_dt = base_time + timedelta(minutes=n_curr['time_min'])
             finish_service_dt = start_dt + timedelta(minutes=service_mins)
+            
+            # arrival_dt = Time the truck physically pulls up at the customer
+            arrival_dt = finish_service_dt + timedelta(minutes=travel_mins)
+            
+            # end_dt = Time the service ACTUALLY starts (OR-Tools node start time)
             end_dt = base_time + timedelta(minutes=n_next['time_min'])
             
             name = all_nodes[n_curr['node_index']].address.name if hasattr(all_nodes[n_curr['node_index']], 'address') else all_nodes[n_curr['node_index']].name
             
-            # Service Block
+            # 1. Service Block (Unloading)
             if service_mins > 0:
                 gantt_data.append(dict(
                     Task=truck.truck_id, Start=start_dt.strftime("2026-04-17 %H:%M"), End=finish_service_dt.strftime("2026-04-17 %H:%M"), 
                     Phase=f"Manutention ({service_mins}m)", Location=name
                 ))
             
-            # Transit Block
-            if finish_service_dt < end_dt:
-                next_name = all_nodes[n_next['node_index']].address.name if hasattr(all_nodes[n_next['node_index']], 'address') else all_nodes[n_next['node_index']].name
+            # 2. Transit Block (Physically Driving)
+            next_name = all_nodes[n_next['node_index']].address.name if hasattr(all_nodes[n_next['node_index']], 'address') else all_nodes[n_next['node_index']].name
+            gantt_data.append(dict(
+                Task=truck.truck_id, Start=finish_service_dt.strftime("2026-04-17 %H:%M"), End=arrival_dt.strftime("2026-04-17 %H:%M"), 
+                Phase="Trajet routier", Location=f"Vers: {next_name}"
+            ))
+            
+            # 3. Waiting Block (If arrived before Window opens)
+            if arrival_dt < end_dt:
                 gantt_data.append(dict(
-                    Task=truck.truck_id, Start=finish_service_dt.strftime("2026-04-17 %H:%M"), End=end_dt.strftime("2026-04-17 %H:%M"), 
-                    Phase="Trajet routier", Location=f"Vers: {next_name}"
+                    Task=truck.truck_id, Start=arrival_dt.strftime("2026-04-17 %H:%M"), End=end_dt.strftime("2026-04-17 %H:%M"), 
+                    Phase="Attente (Time Window)", Location=f"Patienter à: {next_name}"
                 ))
 
         total_kms = distance_m / 1000.0

@@ -26,9 +26,15 @@ class LogisticsRepository:
         
         orders = []
         for i, c in enumerate(selected):
-            # 50% chance of strict morning delivery
-            is_morning = random.choice([True, False])
-            tw = TimeWindow(start_minute=480, end_minute=720) if is_morning else TimeWindow(start_minute=480, end_minute=1080)
+            # Broaden time windows to prove Multi-Fleet flexibility
+            # 33% Exact morning, 33% Exact afternoon, 33% All day
+            tw_type = random.choice(["morning", "afternoon", "allday"])
+            if tw_type == "morning":
+                tw = TimeWindow(start_minute=480, end_minute=720) # 08:00 - 12:00
+            elif tw_type == "afternoon":
+                tw = TimeWindow(start_minute=840, end_minute=1080) # 14:00 - 18:00
+            else:
+                tw = TimeWindow(start_minute=480, end_minute=1140) # 08:00 - 19:00
             
             addr = Address(name=c["name"], latitude=c["latitude"], longitude=c["longitude"])
             order = DeliveryOrder(
@@ -36,8 +42,8 @@ class LogisticsRepository:
                 address=addr,
                 weight_kg=random.choice([50, 200, 400, 800, 1000]),
                 time_window=tw,
-                service_time_minutes=15, # 15 mins to unload
-                priority=1 if not is_morning else 2
+                service_time_minutes=random.choice([15, 30, 45]), # Varying service times
+                priority=1 if tw_type == "morning" else 2
             )
             orders.append(order)
             

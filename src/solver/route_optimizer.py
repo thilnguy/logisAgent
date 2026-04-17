@@ -71,6 +71,11 @@ class EnterpriseRouteOptimizer:
             'Time'
         )
         time_dimension = routing.GetDimensionOrDie('Time')
+        # V3.2: Hybrid Time Optimization
+        # 1. Force Balancing: Penalize the single latest arrival across all trucks
+        time_dimension.SetGlobalSpanCostCoefficient(500)
+        # 2. Delayed Start: Minimize duration (End - Start) for each truck to save wages
+        time_dimension.SetSpanCostCoefficientForAllVehicles(100)
 
         # Add Time Windows Logic
         for i, node in enumerate(self.nodes):
@@ -88,7 +93,7 @@ class EnterpriseRouteOptimizer:
 
         # Instantiate search parameters
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()
-        search_parameters.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+        search_parameters.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PARALLEL_CHEAPEST_INSERTION
         search_parameters.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
         search_parameters.time_limit.FromSeconds(time_limit_sec)
 
