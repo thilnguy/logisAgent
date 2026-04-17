@@ -33,9 +33,9 @@ stock_mock["ORD-5555"] = 0
 st.sidebar.header("⚙️ Configuration DSS")
 num_orders = st.sidebar.slider("Volume de commandes", 3, 7, 5)
 
-scenario = st.sidebar.checkbox("🚨 Simuler: A10 Bloquée (Orléans Nord)")
+scenario = st.sidebar.checkbox("🚨 Simuler: Congestion Axe Nord (Pôle 45 / A10)")
 if scenario:
-    st.sidebar.warning("La congestion routière augmentera drastiquement les temps de trajets au Nord.")
+    st.sidebar.warning("Le blocage de l'A10 sature la D2020. Ralentissement massif des camions au Nord.")
 
 generate_btn = st.sidebar.button("📦 Simuler Flux Entrant (WMS)")
 
