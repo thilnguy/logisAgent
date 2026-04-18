@@ -26,7 +26,12 @@ class EnterpriseRouteOptimizer:
             self.starts.append(start_idx)
             self.ends.append(end_idx)
 
-    def solve(self, time_limit_sec: int = 5):
+    def solve(self, time_limit_sec=8, global_span_weight=100, span_cost_weight=300):
+        """
+        Main solver entry point.
+        - global_span_weight: balancing factor (higher = more spread across fleet)
+        - span_cost_weight: wage optimization factor (higher = minimize work duration)
+        """
         manager = pywrapcp.RoutingIndexManager(self.num_nodes, self.num_vehicles, self.starts, self.ends)
         routing = pywrapcp.RoutingModel(manager)
 
@@ -38,7 +43,7 @@ class EnterpriseRouteOptimizer:
         # Heavier trucks cost more per km → solver prefers smaller trucks for light loads
         # Cost multiplier: 3.5t=1x, 12t=2x, 44t=4x (proportional to fuel/maintenance)
         for vid, truck in enumerate(self.trucks):
-            cost_multiplier = max(1, int(truck.capacity_kg / 1500))  # 1500kg base = 1x
+            cost_multiplier = min(3, max(1, int(truck.capacity_kg / 1500)))  # Cap at 3x to avoid over-penalizing large trucks
             
             def make_cost_callback(mult):
                 def vehicle_cost_callback(from_index, to_index):
@@ -82,12 +87,11 @@ class EnterpriseRouteOptimizer:
             'Time'
         )
         time_dimension = routing.GetDimensionOrDie('Time')
-        # V4.1: Rebalanced Objective Weights
-        # SpanCost > GlobalSpanCost → Prioritize "start late, no waiting" over "spread evenly"
-        # 1. Moderate balancing (still uses multiple trucks, but won't force premature dispatch)
-        time_dimension.SetGlobalSpanCostCoefficient(200)
-        # 2. Strong delayed start (heavily penalizes long route duration = eliminates idle waiting)
-        time_dimension.SetSpanCostCoefficientForAllVehicles(300)
+        # V4.2/13: Configurable Objective Weights
+        # Lower GlobalSpan = fewer trucks activated = lower total cost
+        # Higher SpanCost = delayed start = less idle time = lower wages
+        time_dimension.SetGlobalSpanCostCoefficient(global_span_weight)
+        time_dimension.SetSpanCostCoefficientForAllVehicles(span_cost_weight)
 
         # Add Time Windows Logic
         for i, node in enumerate(self.nodes):

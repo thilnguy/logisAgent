@@ -42,6 +42,29 @@ if is_congested:
     st.sidebar.error(f"🔴 **{traffic_data['status']}**\n\n{traffic_data['message']}")
 else:
     st.sidebar.success(f"🟢 **{traffic_data['status']}**\n\n{traffic_data['message']}")
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("🎯 Stratégie Décisionnelle")
+strategy = st.sidebar.radio(
+    "Objectif ưu tiên",
+    ["Économique (Tối ưu tiền)", "Équilibré (Cân bằng)", "Social (Công bằng tài xế)"],
+    index=1,
+    help="Économique: Dùng ít xe nhất có thể | Équilibré: Tương quan chi phí/tải | Social: Chia đều đơn"
+)
+
+# Advanced Sliders for Leadership fine-tuning
+with st.sidebar.expander("🛠️ Cấu hình Trade-offs (Nâng cao)"):
+    # Map presets to defaults
+    if "Économique" in strategy:
+        def_balance, def_span = 0, 500
+    elif "Équilibré" in strategy:
+        def_balance, def_span = 100, 300
+    else:  # Social
+        def_balance, def_span = 600, 100
+        
+    g_weight = st.slider("Cân bằng tải (GlobalSpan)", 0, 1000, def_balance)
+    s_weight = st.slider("Tối ưu lương/chờ (SpanCost)", 0, 1000, def_span)
+
 st.sidebar.markdown("---")
 
 generate_btn = st.sidebar.button("📦 Simuler Flux Entrant (WMS)")
@@ -95,9 +118,13 @@ if st.button("🚀 Exécuter Solveur CVRPTW", type="primary"):
         router = RoutingMatrix([o.address if hasattr(o, 'address') else o for o in all_nodes])
         dist_matrix, time_matrix = router.get_matrices(apply_congestion_scenario=is_congested)
         
-        # Optimize with an extended 8-sec search for larger graphs
+        # Optimize with dynamic configuration from Sidebar
         optimizer = EnterpriseRouteOptimizer(all_nodes, trucks, dist_matrix, time_matrix)
-        solution = optimizer.solve(time_limit_sec=8)
+        solution = optimizer.solve(
+            time_limit_sec=8,
+            global_span_weight=g_weight,
+            span_cost_weight=s_weight
+        )
         
         if solution is None:
             st.error("Aucune solution trouvée respectant les fenêtres de temps (Time Windows) ou capacités.")
