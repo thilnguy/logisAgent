@@ -116,20 +116,18 @@ class EnterpriseRouteOptimizer:
             index = manager.NodeToIndex(i)
             routing.AddDisjunction([index], penalty_per_drop)
 
-        # V4 Phase 11: Territory Zone Restrictions
-        # Use SetAllowedVehiclesForIndex to restrict which trucks can serve each zone
+        # V4 Phase 11: Territory Zone Restrictions (Hard CP Constraints)
+        # Use explicit solver.Add() constraints — guaranteed to be respected
+        cp_solver = routing.solver()
         for i in range(self.num_depots, self.num_nodes):
             node = self.nodes[i]
             order_zone = getattr(node, 'zone', None)
             if order_zone:
                 index = manager.NodeToIndex(i)
-                allowed_vehicles = []
                 for vid, truck in enumerate(self.trucks):
-                    if order_zone in truck.allowed_zones:
-                        allowed_vehicles.append(vid)
-                if allowed_vehicles:
-                    routing.SetAllowedVehiclesForIndex(allowed_vehicles, index)
-                    logger.debug(f"Node {i} ({node.address.name}, zone={order_zone}) → allowed vehicles: {allowed_vehicles}")
+                    if order_zone not in truck.allowed_zones:
+                        cp_solver.Add(routing.VehicleVar(index) != vid)
+                        logger.debug(f"🚫 {truck.truck_id} interdit à {node.address.name} (zone {order_zone})")
 
         # Instantiate search parameters
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()

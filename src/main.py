@@ -19,7 +19,6 @@ st.title("🏢 LogisAgent V2.0: Logistics Digital Twin (DSS)")
 st.caption("Pôle 45 / Saran Hub | Amélioration Continue & CVRPTW OR-Tools Engine")
 
 # 1. Initialize Mock DB / Repository
-@st.cache_data
 def load_data():
     return LogisticsRepository("data/mock_db.json")
 
@@ -261,9 +260,28 @@ if "solution" in st.session_state:
     tab1, tab2, tab3 = st.tabs(["🌐 Digital Twin (Map)", "📊 Timeline Gantt", "💶 Financial Audit (TCO)"])
 
     with tab1:
-        # Plot Pydeck
+        # Build zone-colored markers for delivery points
+        zone_colors = {"NORTH": [0, 120, 255], "SOUTH": [0, 200, 100], "CITY": [255, 160, 0]}
+        zone_markers = []
+        for node in all_nodes:
+            if hasattr(node, 'zone') and node.zone:
+                zone_markers.append({
+                    "position": [node.address.longitude, node.address.latitude],
+                    "color": zone_colors.get(node.zone, [180, 180, 180]),
+                    "name": f"{node.address.name} ({node.zone})",
+                    "zone": node.zone
+                })
+            elif hasattr(node, 'depot_id'):
+                zone_markers.append({
+                    "position": [node.longitude, node.latitude],
+                    "color": [255, 0, 0],
+                    "name": f"🏭 {node.name} (DEPOT)",
+                    "zone": "DEPOT"
+                })
+        
+        # Plot Pydeck with Arc + Zone Scatter layers
         view_state = pdk.ViewState(latitude=47.93, longitude=1.9, zoom=10, pitch=45)
-        layer = pdk.Layer(
+        arc_layer = pdk.Layer(
             "ArcLayer",
             data=pydeck_lines,
             get_source_position="start",
@@ -273,7 +291,20 @@ if "solution" in st.session_state:
             get_width=5,
             pickable=True
         )
-        st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip={"text": "{truck}"}))
+        scatter_layer = pdk.Layer(
+            "ScatterplotLayer",
+            data=zone_markers,
+            get_position="position",
+            get_fill_color="color",
+            get_radius=300,
+            pickable=True
+        )
+        st.pydeck_chart(pdk.Deck(
+            layers=[arc_layer, scatter_layer], 
+            initial_view_state=view_state, 
+            tooltip={"text": "{name}"}
+        ))
+        st.caption("🔴 Dépôt | 🔵 NORTH | 🟢 SOUTH | 🟠 CITY")
 
     with tab2:
         df_gantt = pd.DataFrame(gantt_data)

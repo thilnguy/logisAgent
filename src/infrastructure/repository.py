@@ -1,7 +1,30 @@
 import json
 import random
+import math
 from typing import List, Dict
 from domain.models import Depot, DeliveryOrder, Address, TimeWindow
+
+# Orléans city center reference point
+ORLEANS_CENTER_LAT = 47.902
+ORLEANS_CENTER_LON = 1.904
+
+def auto_zone(lat: float, lon: float) -> str:
+    """
+    Auto-calculate territory zone from GPS coordinates.
+    - CITY: Within ~3km of Orléans center
+    - NORTH: North of Orléans (lat >= 47.91) and outside city core
+    - SOUTH: South/East/West of Orléans and outside city core
+    """
+    dlat_km = (lat - ORLEANS_CENTER_LAT) * 111.0   # ~111km per degree latitude
+    dlon_km = (lon - ORLEANS_CENTER_LON) * 73.0     # ~73km per degree longitude at 47.9°N
+    dist_km = math.sqrt(dlat_km**2 + dlon_km**2)
+    
+    if dist_km < 3.0:
+        return "CITY"
+    elif lat >= 47.91:
+        return "NORTH"
+    else:
+        return "SOUTH"
 
 class LogisticsRepository:
     """
@@ -20,21 +43,20 @@ class LogisticsRepository:
         """
         Mocks today's orders.
         Randomly assigns priority and time windows (morning vs afternoon).
+        Zone is auto-calculated from GPS coordinates.
         """
         clients = self.data.get("CLIENTS", [])
         selected = random.sample(clients, min(count, len(clients)))
         
         orders = []
         for i, c in enumerate(selected):
-            # Broaden time windows to prove Multi-Fleet flexibility
-            # 33% Exact morning, 33% Exact afternoon, 33% All day
             tw_type = random.choice(["morning", "afternoon", "allday"])
             if tw_type == "morning":
-                tw = TimeWindow(start_minute=480, end_minute=720) # 08:00 - 12:00
+                tw = TimeWindow(start_minute=480, end_minute=720)
             elif tw_type == "afternoon":
-                tw = TimeWindow(start_minute=840, end_minute=1080) # 14:00 - 18:00
+                tw = TimeWindow(start_minute=840, end_minute=1080)
             else:
-                tw = TimeWindow(start_minute=480, end_minute=1140) # 08:00 - 19:00
+                tw = TimeWindow(start_minute=480, end_minute=1140)
             
             addr = Address(name=c["name"], latitude=c["latitude"], longitude=c["longitude"])
             
@@ -49,6 +71,9 @@ class LogisticsRepository:
             weight = random.choice(list(weight_service_map.keys()))
             service_time = weight_service_map[weight]
             
+            # Auto-calculate zone from GPS coordinates
+            calculated_zone = auto_zone(c["latitude"], c["longitude"])
+            
             order = DeliveryOrder(
                 order_id=f"ORD-{random.randint(1000, 9999)}",
                 address=addr,
@@ -56,7 +81,7 @@ class LogisticsRepository:
                 time_window=tw,
                 service_time_minutes=service_time,
                 priority=1 if tw_type == "morning" else 2,
-                zone=c.get("zone")
+                zone=calculated_zone
             )
             orders.append(order)
             
