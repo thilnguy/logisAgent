@@ -9,6 +9,7 @@ venv/
 
 # Streamlit
 .streamlit/
+!.streamlit/config.toml
 
 # OS
 .DS_Store
