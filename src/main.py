@@ -35,7 +35,34 @@ repo = load_data()
 depots = repo.get_active_depots()
 
 st.sidebar.header("⚙️ Configuration DSS")
-num_orders = st.sidebar.slider("Volume de commandes (Scalability Test)", 5, 100, 12, help="Poussez à 100 pour tester la performance industrielle du solver.")
+
+# 1. Industrial Importation (Prioritized)
+st.sidebar.subheader("📥 Importation Industrielle")
+import_mode = st.sidebar.toggle("Activer Remplacement Manuel", help="Permet d'ignorer la simulation để nhập file hoặc gõ tay.")
+
+uploaded_file = None
+if import_mode:
+    uploaded_file = st.sidebar.file_uploader("Fichier WMS (CSV/xlsx)", type=["csv", "xlsx"])
+    
+    # Template Download
+    template_df = pd.DataFrame({
+        "Client": ["Boulangerie A", "Pharmacie B"],
+        "Latitude": [47.90, 47.92],
+        "Longitude": [1.90, 1.95],
+        "Weight": [250.0, 500.0],
+        "Start": ["08:00", "14:00"],
+        "End": ["12:00", "18:00"],
+        "Priority": [1, 2]
+    })
+    st.sidebar.download_button("📥 Télécharger Template CSV", template_df.to_csv(index=False), "template_logisagent.csv", "text/csv")
+    
+    # In manual mode, num_orders matches the actual count
+    if "orders" in st.session_state and st.session_state.orders:
+        num_orders = len(st.session_state.orders)
+    else:
+        num_orders = 12 # Default
+else:
+    num_orders = st.sidebar.slider("Volume de commandes (Scalability Test)", 5, 100, 12, help="Poussez à 100 để kiểm tra hiệu suất.")
 
 # Global Fleet Definition (Digital Twin Assets)
 base_trucks = [
@@ -105,27 +132,11 @@ resilience_level = st.sidebar.select_slider(
 resilience_map = {"Risqué (Efficient)": 1.0, "Standard (Prudent)": 1.15, "Robuste (Haute Résilience)": 1.3}
 safety_margin = resilience_map[resilience_level]
 
-st.sidebar.markdown("---")
-st.sidebar.subheader("📥 Importation Industrielle")
-import_mode = st.sidebar.toggle("Activer Remplacement Manuel", help="Permet d'ignorer la simulation để nhập file hoặc gõ tay.")
-
-uploaded_file = None
-if import_mode:
-    uploaded_file = st.sidebar.file_uploader("Fichier WMS (CSV/xlsx)", type=["csv", "xlsx"])
-    
-    # Template Download
-    template_df = pd.DataFrame({
-        "Client": ["Boulangerie A", "Pharmacie B"],
-        "Latitude": [47.90, 47.92],
-        "Longitude": [1.90, 1.95],
-        "Weight": [250.0, 500.0],
-        "Start": ["08:00", "14:00"],
-        "End": ["12:00", "18:00"],
-        "Priority": [1, 2]
-    })
-    st.sidebar.download_button("� Télécharger Template CSV", template_df.to_csv(index=False), "template_logisagent.csv", "text/csv")
-
-generate_btn = st.sidebar.button("�📦 Simuler Flux Entrant (WMS)")
+# Data Generation Button (Only for simulation mode)
+if not import_mode:
+    generate_btn = st.sidebar.button("� Simuler Flux Entrant (WMS)")
+else:
+    generate_btn = False
 
 if "orders" not in st.session_state:
     st.session_state.orders = []
