@@ -1,7 +1,7 @@
-streamlit==1.32.0
-pandas==2.2.1
-pydeck==0.8.0
-plotly==5.19.0
-loguru==0.7.2
-ortools==9.8.3296
-pydantic==2.6.3
+streamlit
+pandas
+pydeck
+plotly
+loguru
+ortools
+pydantic
