@@ -34,4 +34,4 @@ Detailed geographic handling of key industrial zones:
 - **SUD**: Olivet, Saint-Cyr-en-Val.
 
 ---
-*Created for the CESI Alternance Portfolio - Demonstrating Professional Problem Solving through Agentic AI.*
+*Part of Thi Lan Anh NGUYEN's Professional Portfolio - Demonstrating High-Performance Industrial AI Solutions.*
