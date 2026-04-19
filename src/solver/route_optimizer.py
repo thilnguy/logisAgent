@@ -26,11 +26,13 @@ class EnterpriseRouteOptimizer:
             self.starts.append(start_idx)
             self.ends.append(end_idx)
 
-    def solve(self, time_limit_sec=8, global_span_weight=100, span_cost_weight=300):
+    def solve(self, time_limit_sec=8, global_span_weight=100, span_cost_weight=300, safety_margin=1.0):
+        self.safety_margin = safety_margin
         """
         Main solver entry point.
-        - global_span_weight: balancing factor (higher = more spread across fleet)
-        - span_cost_weight: wage optimization factor (higher = minimize work duration)
+        - global_span_weight: balancing factor
+        - span_cost_weight: wage optimization factor
+        - safety_margin: multiplier for travel/service times (1.0 = Risky, 1.2+ = Robust)
         """
         manager = pywrapcp.RoutingIndexManager(self.num_nodes, self.num_vehicles, self.starts, self.ends)
         routing = pywrapcp.RoutingModel(manager)
@@ -75,8 +77,22 @@ class EnterpriseRouteOptimizer:
             from_node = manager.IndexToNode(from_index)
             to_node = manager.IndexToNode(to_index)
             node = self.nodes[from_node]
+            
+            # Base service time (manutention)
             service_time = getattr(node, 'service_time_minutes', 0)
-            return self.time_matrix[from_node][to_node] + service_time
+            
+            # V5: Operational Resilience / Rush-hour Penalty
+            # If we are in Robust mode (> 1.0), and the node has an early morning window, 
+            # we add slack for local congestion.
+            tw = getattr(node, 'time_window', None)
+            is_rush_hour_risk = tw and tw.start_minute < 600 # Before 10:00 AM
+            
+            extra_slack = 0
+            if safety_margin > 1.0:
+                extra_slack = 10 if is_rush_hour_risk else 5
+                
+            travel_time = self.time_matrix[from_node][to_node] * safety_margin
+            return int(travel_time + service_time + extra_slack)
 
         time_callback_idx = routing.RegisterTransitCallback(time_callback)
         routing.AddDimension(
@@ -178,21 +194,32 @@ class EnterpriseRouteOptimizer:
             })
 
             if len(route) > 2:
+                # V5: Calculate Route Robustness Score
+                # Rush hours: 08:00-09:30 (480-570) and 16:30-18:30 (990-1110)
+                rush_stops = 0
+                for stop in route:
+                    t = stop['time_min']
+                    if (480 <= t <= 570) or (990 <= t <= 1110):
+                        rush_stops += 1
+                
+                # Penalty per rush stop, mitigated by safety_margin
+                penalty = (rush_stops * 0.15) / self.safety_margin
+                robustness_score = max(0.4, 1.0 - penalty)
+
                 # V4 Phase 9: Post-solve EU 561/2006 compliance check
                 route_duration = route[-1]['time_min'] - route[0]['time_min']
                 break_info = None
                 if route_duration > 270:  # 4.5 hours → mandatory 45-min break
-                    # Insert break at nearest midpoint
                     midpoint_min = route[0]['time_min'] + 270
                     break_info = {"start_min": midpoint_min, "duration_min": 45}
-                    logger.warning(f"⚠️ Vehicle {vehicle_id}: Route duration {route_duration}m > 270m. Mandatory break inserted at minute {midpoint_min}.")
                 
                 routes.append({
                     "vehicle_id": vehicle_id,
                     "truck": self.trucks[vehicle_id],
                     "route": route,
                     "total_load_kg": route_load,
-                    "break_info": break_info
+                    "break_info": break_info,
+                    "robustness_score": round(robustness_score * 100, 1)
                 })
         
         # V4 Phase 10: Detect dropped (undelivered) orders
@@ -213,4 +240,9 @@ class EnterpriseRouteOptimizer:
                 })
                 logger.warning(f"⚠️ Dropped order: {node.address.name} ({node.weight_kg}kg)")
                 
-        return {"routes": routes, "dropped_orders": dropped_orders}
+        avg_robustness = sum(r['robustness_score'] for r in routes) / len(routes) if routes else 100
+        return {
+            "routes": routes, 
+            "dropped_orders": dropped_orders,
+            "solution_robustness": round(avg_robustness, 1)
+        }

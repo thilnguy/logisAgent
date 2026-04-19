@@ -79,6 +79,17 @@ with st.sidebar.expander("🛠️ Paramètres Trade-offs (Avancé)"):
     s_weight = st.slider("Optimisation Salaire/Attente (SpanCost)", 0, 1000, def_span)
 
 st.sidebar.markdown("---")
+st.sidebar.subheader("🛡️ Résilience Opérationnelle")
+resilience_level = st.sidebar.select_slider(
+    "Niveau de Sécurité (Marge Chauffeur)",
+    options=["Risqué (Efficient)", "Standard (Prudent)", "Robuste (Haute Résilience)"],
+    value="Standard (Prudent)",
+    help="Risqué: 0% marge | Standard: 15% marge | Robuste: 30% marge s'adaptant au trafic."
+)
+resilience_map = {"Risqué (Efficient)": 1.0, "Standard (Prudent)": 1.15, "Robuste (Haute Résilience)": 1.3}
+safety_margin = resilience_map[resilience_level]
+
+st.sidebar.markdown("---")
 
 generate_btn = st.sidebar.button("📦 Simuler Flux Entrant (WMS)")
 
@@ -127,7 +138,8 @@ if st.button("🚀 Exécuter Solveur CVRPTW", type="primary"):
         solution = optimizer.solve(
             time_limit_sec=8,
             global_span_weight=g_weight,
-            span_cost_weight=s_weight
+            span_cost_weight=s_weight,
+            safety_margin=safety_margin
         )
         
         if solution is None:
@@ -138,6 +150,7 @@ if st.button("🚀 Exécuter Solveur CVRPTW", type="primary"):
             st.session_state.dist_matrix = dist_matrix
             st.session_state.time_matrix = time_matrix
             st.session_state.all_nodes = all_nodes
+            st.session_state.solution_robustness = solution.get('solution_robustness', 100)
 
 if "solution" in st.session_state:
     solution = st.session_state.solution
@@ -351,21 +364,32 @@ if "solution" in st.session_state:
         
     with tab3:
         # Nested Grid for Finances
-        colA, colB = st.columns([1, 1])
+        colA, colB, colC = st.columns([1, 1, 1])
         with colA:
             st.metric("Total Cost of Ownership", f"{total_tco:.2f} €", "Incl. Salaires, Gazole, Entretien, Taxe CO2")
+        with colB:
+            robustness = st.session_state.get('solution_robustness', 100)
+            color = "normal" if robustness > 80 else "off"
+            st.metric("Indice de Fiabilité", f"{robustness}%", f"{resilience_level}")
+        with colC:
+            avg_load_factor = sum(float(d['Taux Chargement'].replace('%','')) for d in tco_truck_details) / len(tco_truck_details) if tco_truck_details else 0
+            st.metric("Taux de Remplissage", f"{avg_load_factor:.1f}%", "Moyen Fleet")
+
+        st.markdown("---")
+        col1, col2 = st.columns([2, 1])
+        with col1:
             st.markdown("#### 🔍 Matrice d'Audit Financier par Camion")
             df_tco_dev = pd.DataFrame(tco_truck_details)
             st.dataframe(df_tco_dev, use_container_width=True)
-            st.info("Cette table permet aux auditeurs de vérifier le calcul TCO véhicule par véhicule.")
-        with colB:
-            # Audit View: Breakdown pie chart
-            df_tco = pd.DataFrame({
-                "Catégorie de Coût": ["Gazole", "Salaires", "Entretien", "Taxe CO2"],
+            st.info("Ce tableau permet aux auditeurs de vérifier le calcul du TCO véhicule par véhicule.")
+        with col2:
+            st.markdown("#### 🥧 Répartition des Coûts")
+            df_tco_pie = pd.DataFrame({
+                "Catégorie": ["Gazole", "Salaires", "Entretien", "Taxe CO2"],
                 "Coût (€)": [tco_breakdown["fuel_euro"], tco_breakdown["wage_euro"], tco_breakdown["maintenance_euro"], tco_breakdown["co2_tax_euro"]]
             })
-            fig_pie = px.pie(df_tco, values="Coût (€)", names="Catégorie de Coût")
-            fig_pie.update_layout(height=280, margin=dict(t=10, b=0, l=0, r=0))
+            fig_pie = px.pie(df_tco_pie, values="Coût (€)", names="Catégorie")
+            fig_pie.update_layout(height=300, margin=dict(t=10, b=0, l=0, r=0))
             st.plotly_chart(fig_pie, use_container_width=True)
 
         # Simulated Decision Report Export
@@ -376,22 +400,25 @@ if "solution" in st.session_state:
         total_kms_all = sum(float(str(d['KM']).replace(',','')) for d in tco_truck_details)
         avg_load_factor = sum(float(d['Taux Chargement'].replace('%','')) for d in tco_truck_details) / len(tco_truck_details) if tco_truck_details else 0
         
-        report_data = f"""### RAPPORT DÉCISIONNEL - LOGISAGENT V4
+        report_data = f"""### RAPPORT DÉCISIONNEL - LOGISAGENT V5 (Résilience)
 --------------------------------------
 **Hub**: Orléans (Saran/Ormes)  
 **Date**: {datetime.now().strftime('%d/%m/%Y %H:%M')}  
 **Statut Trafic**: {'ALERTE CRITIQUE' if is_congested else 'FLUIDE'}  
 **Stratégie**: {strategy}
+**Résilience**: {resilience_level} (Marge {safety_margin}x)
 
 #### 📊 RÉSULTATS CLÉS:
 - **Coût Total (TCO)**: {total_tco:,.2f} €
 - **Distance Totale**: {total_kms_all:.1f} km
+- **Indice de Fiabilité**: {st.session_state.get('solution_robustness', 'N/A')}%
 - **Camions Activés**: {len(tco_truck_details)} / {len(trucks)}
 - **Taux de Remplissage Moyen**: {avg_load_factor:.1f}%
 
-#### ✅ CONFORMITÉ:
+#### ✅ CONFORMITÉ & RÉSILIENCE:
 - **Repos Chauffeur (EU 561/2006)**: VÉRIFIÉ & CONFORME
-- **Restrictions Territoriales**: RESPECTÉES
+- **Marge de Sécurité**: Appliquée ({resilience_level})
+- **Robustesse**: Optimisée
 
 ---
 *Généré par LogisAgent DSS - Digital Twin Engine*
