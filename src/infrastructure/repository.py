@@ -46,7 +46,28 @@ class LogisticsRepository:
         Zone is auto-calculated from GPS coordinates.
         """
         clients = self.data.get("CLIENTS", [])
-        selected = random.sample(clients, min(count, len(clients)))
+        
+        # V6: Support for massive industrial scaling (synthetic generation)
+        if count > len(clients):
+            # Professional French business names for synthetic generation
+            biz_names = [
+                "Boulangerie du Centre", "Pharmacie de Saran", "Supermarché E.Leclerc", 
+                "Clinique d'Orléans", "Magasin Fnac", "Zara Place d'Arc", 
+                "Garage Renault", "Entrepôt Amazon", "Laboratoire Médical", 
+                "Hôtel Kyriad", "Boutique Nespresso", "Auchan Saint-Jean",
+                "Decathlon Saran", "Castorama Ingré", "Leroy Merlin"
+            ]
+            
+            # Generate synthetic points around Orléans
+            selected = []
+            for i in range(count):
+                # Random jitter around Orléans (+/- 15km ~ 0.15 degree)
+                lat = ORLEANS_CENTER_LAT + random.uniform(-0.15, 0.15)
+                lon = ORLEANS_CENTER_LON + random.uniform(-0.15, 0.15)
+                biz = random.choice(biz_names)
+                selected.append({"name": f"{biz} #{i+1}", "latitude": lat, "longitude": lon})
+        else:
+            selected = random.sample(clients, count)
         
         orders = []
         for i, c in enumerate(selected):

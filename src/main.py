@@ -29,8 +29,11 @@ def load_data():
 repo = load_data()
 depots = repo.get_active_depots()
 
+st.sidebar.header("⚙️ Configuration DSS")
+num_orders = st.sidebar.slider("Volume de commandes (Scalability Test)", 5, 100, 12, help="Poussez à 100 pour tester la performance industrielle du solver.")
+
 # Global Fleet Definition (Digital Twin Assets)
-trucks = [
+base_trucks = [
     Truck(truck_id="T1-VUL-1", type_name="3.5t Downtown A", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0, fixed_cost_euro=35.0, allowed_zones=["CENTRE-VILLE", "SUD"]),
     Truck(truck_id="T1-VUL-2", type_name="3.5t Downtown B", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0, fixed_cost_euro=35.0, allowed_zones=["CENTRE-VILLE", "NORD"]),
     Truck(truck_id="T2-PL-1", type_name="12t Ext A", capacity_kg=5000, start_depot_id="D1", end_depot_id="D2", co2_emission_rate_g_per_km=650.0, wage_per_hour_euro=25.0, fixed_cost_euro=65.0, allowed_zones=["NORD"]),
@@ -38,13 +41,21 @@ trucks = [
     Truck(truck_id="T3-HGV", type_name="44t Artenay", capacity_kg=25000, start_depot_id="D2", end_depot_id="D2", co2_emission_rate_g_per_km=950.0, wage_per_hour_euro=30.0, fixed_cost_euro=120.0, allowed_zones=["NORD"])
 ]
 
+# V6: Auto-scale fleet for Stress Testing
+if num_orders > 15:
+    trucks = []
+    multiplier = (num_orders // 10) + 1
+    unit_id = 100
+    for i in range(multiplier):
+        for t in base_trucks:
+            unit_id += 1
+            new_t = t.copy(update={"truck_id": f"UNIT-{unit_id}", "type_name": t.type_name})
+            trucks.append(new_t)
+else:
+    trucks = base_trucks
+
 # Provide simulated Inventory (all items in stock)
-stock_mock = {f"ORD-{i}": 100 for i in range(1000, 9999)}
-
-st.sidebar.header("⚙️ Configuration DSS")
-num_orders = st.sidebar.slider("Volume de commandes (Scalability Test)", 5, 15, 12)
-
-# Live API Integration instead of Manual Checkbox
+stock_mock = {f"ORD-{i}": 100 for i in range(1000, 9999 + num_orders)}
 st.sidebar.markdown("---")
 st.sidebar.subheader("📡 Live API (Bison Futé)")
 traffic_agent = TrafficAgent()
@@ -132,15 +143,18 @@ if st.button("🚀 Exécuter Solveur CVRPTW", type="primary"):
         # Calculate matrices via dynamic Webhook trigger
         router = RoutingMatrix([o.address if hasattr(o, 'address') else o for o in all_nodes])
         dist_matrix, time_matrix = router.get_matrices(apply_congestion_scenario=is_congested)
-        
         # Optimize with dynamic configuration from Sidebar
         optimizer = EnterpriseRouteOptimizer(all_nodes, trucks, dist_matrix, time_matrix)
+        
+        import time
+        start_time = time.time()
         solution = optimizer.solve(
             time_limit_sec=8,
             global_span_weight=g_weight,
             span_cost_weight=s_weight,
             safety_margin=safety_margin
         )
+        st.session_state.solve_duration = time.time() - start_time
         
         if solution is None:
             st.error("Aucune solution trouvée respectant les fenêtres de temps (Time Windows) ou capacités.")
@@ -186,14 +200,20 @@ if "solution" in st.session_state:
         distance_m = 0
         node_seq = route['route']
         
-        truck_colors = {
-            "T1-VUL-1": [0, 255, 128],   # Green
-            "T1-VUL-2": [0, 128, 255],   # Blue
-            "T2-PL-1": [153, 50, 204],   # Deep Purple
-            "T2-PL-2": [255, 20, 147],   # Deep Pink
-            "T3-HGV": [255, 165, 0]      # Orange
-        }
-        color = truck_colors.get(truck.truck_id, [255, 255, 255])
+        # V6/7: Dynamic Color Palette for multi-truck visualization
+        palette = [
+            [0, 255, 128],   # Spring Green
+            [0, 128, 255],   # Azure
+            [153, 50, 204],  # Orchid
+            [255, 20, 147],  # Deep Pink
+            [255, 165, 0],   # Orange
+            [255, 255, 0],   # Yellow
+            [0, 255, 255],   # Cyan
+            [255, 0, 0],     # Red
+            [128, 0, 128],   # Purple
+            [0, 128, 0]      # Green
+        ]
+        color = palette[sum(ord(c) for c in truck.truck_id) % len(palette)]
 
         for i in range(len(node_seq)-1):
             n_curr = node_seq[i]
@@ -364,16 +384,18 @@ if "solution" in st.session_state:
         
     with tab3:
         # Nested Grid for Finances
-        colA, colB, colC = st.columns([1, 1, 1])
+        colA, colB, colC, colD = st.columns([1.2, 1, 1, 1])
         with colA:
             st.metric("Total Cost of Ownership", f"{total_tco:.2f} €", "Incl. Salaires, Gazole, Entretien, Taxe CO2")
         with colB:
             robustness = st.session_state.get('solution_robustness', 100)
-            color = "normal" if robustness > 80 else "off"
             st.metric("Indice de Fiabilité", f"{robustness}%", f"{resilience_level}")
         with colC:
             avg_load_factor = sum(float(d['Taux Chargement'].replace('%','')) for d in tco_truck_details) / len(tco_truck_details) if tco_truck_details else 0
             st.metric("Taux de Remplissage", f"{avg_load_factor:.1f}%", "Moyen Fleet")
+        with colD:
+            solve_time = st.session_state.get('solve_duration', 0)
+            st.metric("Temps de Calcul", f"{solve_time:.3f} s", f"{len(st.session_state.orders)} stops")
 
         st.markdown("---")
         col1, col2 = st.columns([2, 1])
