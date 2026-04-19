@@ -6,3 +6,4 @@ loguru
 ortools
 pydantic
 geopy
+openpyxl

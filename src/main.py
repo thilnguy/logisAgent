@@ -106,27 +106,74 @@ resilience_map = {"Risqué (Efficient)": 1.0, "Standard (Prudent)": 1.15, "Robus
 safety_margin = resilience_map[resilience_level]
 
 st.sidebar.markdown("---")
+st.sidebar.subheader("📥 Importation Industrielle")
+import_mode = st.sidebar.toggle("Activer Remplacement Manuel", help="Permet d'ignorer la simulation để nhập file hoặc gõ tay.")
 
-generate_btn = st.sidebar.button("📦 Simuler Flux Entrant (WMS)")
+uploaded_file = None
+if import_mode:
+    uploaded_file = st.sidebar.file_uploader("Fichier WMS (CSV/xlsx)", type=["csv", "xlsx"])
+    
+    # Template Download
+    template_df = pd.DataFrame({
+        "Client": ["Boulangerie A", "Pharmacie B"],
+        "Latitude": [47.90, 47.92],
+        "Longitude": [1.90, 1.95],
+        "Weight": [250.0, 500.0],
+        "Start": ["08:00", "14:00"],
+        "End": ["12:00", "18:00"],
+        "Priority": [1, 2]
+    })
+    st.sidebar.download_button("� Télécharger Template CSV", template_df.to_csv(index=False), "template_logisagent.csv", "text/csv")
+
+generate_btn = st.sidebar.button("�📦 Simuler Flux Entrant (WMS)")
 
 if "orders" not in st.session_state:
     st.session_state.orders = []
-    
+
+# Handle Data Ingestion
+if import_mode and uploaded_file:
+    try:
+        if uploaded_file.name.endswith('.csv'):
+            df_imp = pd.read_csv(uploaded_file)
+        else:
+            df_imp = pd.read_excel(uploaded_file)
+        st.session_state.orders = repo.parse_dataframe(df_imp)
+    except Exception as e:
+        st.sidebar.error("Erreur lecture file.")
+
 if generate_btn:
-    orders = repo.fetch_daily_orders(num_orders)
-    st.session_state.orders = orders
+    st.session_state.orders = repo.fetch_daily_orders(num_orders)
 
 if not st.session_state.orders:
-    st.info("Veuillez générer des commandes pour lancer le profilage.")
+    st.info("Veuillez générer hoặc import đơn hàng.")
     st.stop()
 
 st.markdown("---")
-st.subheader("📋 WMS Data Feed (Audit)")
-st.caption("Données brutes issues du WMS (Simulation). Audit utilisateur.")
-# Render WMS Orders as a visually clear Dataframe
-order_data = [{"Order ID": o.order_id, "Client": o.address.name, "Zone": o.zone or "N/A", "Weight (kg)": o.weight_kg, "Time Window": f"{o.time_window.start_minute//60:02d}:00 - {o.time_window.end_minute//60:02d}:00", "Unloading (mins)": o.service_time_minutes} for o in st.session_state.orders]
-df_audit = pd.DataFrame(order_data)
-st.dataframe(df_audit, use_container_width=True)
+st.subheader("📋 WMS Data Feed & Éditeur Interactif")
+st.caption("Données issues du WMS ou Importées. Vous pouvez modifier les valeurs directement dans le tableau.")
+
+# 1. Prepare Data for Editor
+editor_data = []
+for o in st.session_state.orders:
+    editor_data.append({
+        "ID": o.order_id,
+        "Client": o.address.name,
+        "Lat": o.address.latitude,
+        "Lon": o.address.longitude,
+        "Weight": o.weight_kg,
+        "Start": f"{o.time_window.start_minute//60:02d}:{o.time_window.start_minute%60:02d}",
+        "End": f"{o.time_window.end_minute//60:02d}:{o.time_window.end_minute%60:02d}",
+        "Zone": o.zone
+    })
+
+# 2. Render st.data_editor
+df_editor = pd.DataFrame(editor_data)
+edited_df = st.data_editor(df_editor, num_rows="dynamic", use_container_width=True, key="main_editor")
+
+# 3. Sync Back to session_state.orders (Refining the objects)
+if st.session_state.get("main_editor"):
+    # Re-parse the edited dataframe to ensure solver uses fresh values
+    st.session_state.orders = repo.parse_dataframe(edited_df.rename(columns={"Lat": "Latitude", "Lon": "Longitude"}))
 
 # 2. Inventory Agent Validation
 agent = InventoryAgent(stock_mock)

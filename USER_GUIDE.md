@@ -16,10 +16,12 @@ Trước khi chạy tối ưu hóa, bạn cần thiết lập các điều kiệ
    - **Social (Công bằng)**: Chia đều đơn hàng cho tất cả tài xế đang sẵn sàng.
    - *Mẹo: Bạn có thể mở mục "Cấu hình Trade-offs" để tinh chỉnh thủ công các trọng số.*
 
-### Bước 2: Nạp dữ liệu WMS
-Nhấn nút **"📦 Simuler Flux Entrant (WMS)"**.
-- Hệ thống sẽ giả lập các đơn hàng từ hệ thống kho.
-- Xem bảng **📋 WMS Data Feed** để kiểm tra: Tên khách hàng, Trọng lượng, Khung giờ giao (Time Window) và Vùng (Zone) địa lý.
+### Bước 2: Nạp dữ liệu (Simuler hoặc Import)
+1. **Simulation**: Nhấn nút **"📦 Simuler Flux Entrant (WMS)"** để tạo dữ liệu giả lập.
+2. **Import Industrial**: Mở mục "Importation Industrielle" ở thanh bên.
+   - Bạn có thể tải file CSV/Excel của mình lên.
+   - Có nút tải **Template** để bạn điền đúng định dạng.
+3. **Chỉnh sửa trực tiếp**: Toàn bộ đơn hàng (từ giả lập hoặc file) sẽ hiện trong bảng **📋 WMS Data Feed & Éditeur Interactif**. Bạn có thể sửa trực tiếp Tọa độ, Khối lượng, Khung giờ ngay trên bảng này. Hệ thống AI sẽ tự động cập nhật theo dữ liệu mới nhất.
 
 ### Bước 3: Thực thi tối ưu hóa
 Nhấn nút **"🚀 Exécuter Solveur CVRPTW"**. 
