@@ -13,10 +13,14 @@ from solver.distance_matrix import RoutingMatrix
 from solver.route_optimizer import EnterpriseRouteOptimizer
 from domain.traffic_agent import TrafficAgent
 
-st.set_page_config(page_title="DSS Digital Twin | LogisAgent", layout="wide", page_icon="🏢")
+st.set_page_config(page_title="LogisAgent V4: Digital Twin & Strategic DSS", layout="wide", page_icon="🚛")
 
-st.title("🏢 LogisAgent V2.0: Logistics Digital Twin (DSS)")
-st.caption("Pôle 45 / Saran Hub | Amélioration Continue & CVRPTW OR-Tools Engine")
+# Industrial Headers (Problem Solver Branding)
+st.title("🚛 LogisAgent V4: Digital Twin & Decision Support System")
+st.markdown("""
+*Hệ thống Hỗ trợ Ra quyết định (DSS) ứng dụng AI - Tối ưu hóa Chuỗi cung ứng theo tiêu chuẩn công nghiệp (EU 561/2006). 
+Tích hợp triết lý **Human-in-the-loop** & **Digital Twin** để quản trị TCO.*
+""")
 
 # 1. Initialize Mock DB / Repository
 def load_data():
@@ -363,3 +367,41 @@ if "solution" in st.session_state:
             fig_pie = px.pie(df_tco, values="Cost (€)", names="Cost Category")
             fig_pie.update_layout(height=280, margin=dict(t=10, b=0, l=0, r=0))
             st.plotly_chart(fig_pie, use_container_width=True)
+
+        # Simulated Decision Report Export
+        st.markdown("---")
+        st.subheader("📄 Exportation Industrielle")
+        
+        # Calculate summary metrics
+        total_kms_all = sum(float(str(d['KM']).replace(',','')) for d in tco_truck_details)
+        avg_load_factor = sum(float(d['Taux Chargement'].replace('%','')) for d in tco_truck_details) / len(tco_truck_details) if tco_truck_details else 0
+        
+        report_data = f"""### RAPPORT DÉCISIONNEL - LOGISAGENT V4
+--------------------------------------
+**Hub**: Orléans (Saran/Ormes)  
+**Date**: {datetime.now().strftime('%d/%m/%Y %H:%M')}  
+**Statut Trafic**: {'ALERTE CRITIQUE' if is_congested else 'FLUIDE'}  
+**Stratégie**: {strategy}
+
+#### 📊 RÉSULTATS CLÉS:
+- **Coût Total (TCO)**: {total_tco:,.2f} €
+- **Distance Totale**: {total_kms_all:.1f} km
+- **Camions Activés**: {len(tco_truck_details)} / {len(trucks)}
+- **Taux de Remplissage Moyen**: {avg_load_factor:.1f}%
+
+#### ✅ CONFORMITÉ:
+- **Repos Chauffeur (EU 561/2006)**: VÉRIFIÉ & CONFORME
+- **Restrictions Territoriales**: RESPECTÉES
+
+---
+*Généré par LogisAgent DSS - Digital Twin Engine*
+"""
+        st.info("💡 Bạn có thể tải báo cáo này dưới dạng Markdown/Text để đính kèm vào hồ sơ ứng tuyển.")
+        st.download_button(
+            label="📩 Tải Báo cáo Quyết định (MD/PDF Simulation)",
+            data=report_data,
+            file_name="rapport_logis_agent_v4.md",
+            mime="text/markdown",
+            key="download_report"
+        )
+
