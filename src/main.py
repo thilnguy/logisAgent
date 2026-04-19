@@ -38,7 +38,7 @@ st.sidebar.header("⚙️ Configuration DSS")
 
 # 1. Industrial Importation (Prioritized)
 st.sidebar.subheader("📥 Importation Industrielle")
-import_mode = st.sidebar.toggle("Activer Remplacement Manuel", help="Permet d'ignorer la simulation để nhập file hoặc gõ tay.")
+import_mode = st.sidebar.toggle("Activer Remplacement Manuel", help="Permet d'ignorer la simulation pour importer un fichier ou saisir manuellement.")
 
 uploaded_file = None
 if import_mode:
@@ -47,8 +47,8 @@ if import_mode:
     # Template Download
     template_df = pd.DataFrame({
         "Client": ["Boulangerie A", "Pharmacie B"],
-        "Latitude": [47.90, 47.92],
-        "Longitude": [1.90, 1.95],
+        "Latitude": [47.902, 47.922],
+        "Longitude": [1.904, 1.914],
         "Weight": [250.0, 500.0],
         "Start": ["08:00", "14:00"],
         "End": ["12:00", "18:00"],
@@ -62,7 +62,7 @@ if import_mode:
     else:
         num_orders = 12 # Default
 else:
-    num_orders = st.sidebar.slider("Volume de commandes (Scalability Test)", 5, 100, 12, help="Poussez à 100 để kiểm tra hiệu suất.")
+    num_orders = st.sidebar.slider("Volume de commandes (Scalability Test)", 5, 100, 12, help="Poussez à 100 pour tester la performance industrielle.")
 
 # Global Fleet Definition (Digital Twin Assets)
 base_trucks = [
@@ -156,7 +156,7 @@ if generate_btn:
     st.session_state.orders = repo.fetch_daily_orders(num_orders)
 
 if not st.session_state.orders:
-    st.info("Veuillez générer hoặc import đơn hàng.")
+    st.info("Veuillez générer ou importer des commandes pour lancer l'optimisation.")
     st.stop()
 
 st.markdown("---")
