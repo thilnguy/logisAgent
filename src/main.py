@@ -2,8 +2,13 @@ import streamlit as st
 import pandas as pd
 import pydeck as pdk
 import plotly.express as px
-from loguru import logger
 from datetime import datetime, timedelta
+import sys
+from loguru import logger
+
+# Configure Loguru: Only show INFO and above for the production demo
+logger.remove()
+logger.add(sys.stderr, level="INFO")
 
 from domain.models import Truck
 from domain.inventory_agent import InventoryAgent
@@ -13,10 +18,10 @@ from solver.distance_matrix import RoutingMatrix
 from solver.route_optimizer import EnterpriseRouteOptimizer
 from domain.traffic_agent import TrafficAgent
 
-st.set_page_config(page_title="LogisAgent V4: Digital Twin & Strategic DSS", layout="wide", page_icon="🚛")
+st.set_page_config(page_title="LogisAgent V7: Digital Twin & Strategic DSS", layout="wide", page_icon="🚛")
 
 # Industrial Headers (Problem Solver Branding)
-st.title("🚛 LogisAgent V4: Digital Twin & Decision Support System")
+st.title("🚛 LogisAgent V7: Digital Twin & Decision Support System")
 st.markdown("""
 *Système d'Aide à la Décision (DSS) basé sur l'IA - Optimisation de la Supply Chain selon les normes industrielles (EU 561/2006). 
 Intègre les concepts de **Human-in-the-loop** & **Digital Twin** pour la gestion du TCO.*
