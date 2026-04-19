@@ -343,7 +343,6 @@ if "solution" in st.session_state:
                     "zone": "DEPOT"
                 })
         
-        # Plot Pydeck with Arc + Zone Scatter layers
         view_state = pdk.ViewState(latitude=47.93, longitude=1.9, zoom=10, pitch=45)
         arc_layer = pdk.Layer(
             "ArcLayer",
@@ -422,7 +421,7 @@ if "solution" in st.session_state:
         total_kms_all = sum(float(str(d['KM']).replace(',','')) for d in tco_truck_details)
         avg_load_factor = sum(float(d['Taux Chargement'].replace('%','')) for d in tco_truck_details) / len(tco_truck_details) if tco_truck_details else 0
         
-        report_data = f"""### RAPPORT DÉCISIONNEL - LOGISAGENT V5 (Résilience)
+        report_data = f"""### RAPPORT DÉCISIONNEL - LOGISAGENT V7 (Industriel)
 --------------------------------------
 **Hub**: Orléans (Saran/Ormes)  
 **Date**: {datetime.now().strftime('%d/%m/%Y %H:%M')}  

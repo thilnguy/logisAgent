@@ -1,4 +1,4 @@
-# 📘 Hướng dẫn sử dụng LogisAgent V2.0 (DSS)
+# 📘 Hướng dẫn sử dụng LogisAgent V7
 
 Chào mừng bạn đến với hệ thống Hỗ trợ Ra quyết định (Decision Support System - DSS) dành cho Trung tâm Logistics Orléans. Hệ thống này giúp bạn tối ưu hóa việc phân hành trình, quản lý đội xe và kiểm soát chi phí (TCO).
 

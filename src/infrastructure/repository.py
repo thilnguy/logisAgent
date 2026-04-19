@@ -41,13 +41,13 @@ class LogisticsRepository:
     
     def fetch_daily_orders(self, count: int = 6) -> List[DeliveryOrder]:
         """
-        Mocks today's orders.
-        Randomly assigns priority and time windows (morning vs afternoon).
+        Mocks today's orders with support for industrial scaling.
+        Randomly assigns priority and time windows.
         Zone is auto-calculated from GPS coordinates.
         """
         clients = self.data.get("CLIENTS", [])
         
-        # V6: Support for massive industrial scaling (synthetic generation)
+        # Support for industrial scaling via synthetic generation
         if count > len(clients):
             # Professional French business names for synthetic generation
             biz_names = [

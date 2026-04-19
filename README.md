@@ -1,28 +1,37 @@
-# LogisAgent V4: Logistics Digital Twin & Strategic DSS
+# LogisAgent V7: High-Performance Logistics Digital Twin & Strategic DSS
 
-**Enterprise-grade Decision Support System (DSS) for Orléans Hub Optimization.**
+**Optimisation Industrielle | Aide à la Décision (DSS) | Résilience Opérationnelle**
 
-LogisAgent V4 is not just a routing solver; it is a **Digital Twin** designed to bridge the gap between complex optimization algorithms (AI) and operational business value (ROI). Built specifically for the **Pôle 45 / Orléans** industrial landscape, it solves the Capacitated Vehicle Routing Problem with Time Windows (CVRPTW) while strictly adhering to French/EU logistics regulations.
+LogisAgent V7 is a production-ready **Digital Twin** designed to bridge the gap between complex optimization algorithms and operational business value. Built for the **Orléans / Pôle 45** industrial landscape, it solves the Capacitated Vehicle Routing Problem with Time Windows (CVRPTW) while strictly adhering to French regulations and managing real-world uncertainty.
 
-## 🚀 Strategic Value Proposition
+## 🚀 Key Innovation Pillars
 
-- **Local Relevance**: Tailored for the Orléans geography (A10 Nord/Sud, Saran, Artenay, Chécy).
-- **Industrial Compliance**: Built-in audit for **EU Regulation 561/2006** (mandatory 45-min driver breaks after 4.5h driving).
-- **Financial Intelligence**: Granular **TCO (Total Cost of Ownership)** calculation including fixed activation costs, maintenance, wages, and CO2 taxes.
-- **Human-in-the-loop**: Allows decision-makers to choose between **Economic**, **Balanced**, or **Social** (fair workload) strategies.
+### 📊 1. Operational Resilience (Risk-Awareness)
+- **Predictive Reliability**: Integrates a `Robustness Index` that grades planning reliability based on exposure to traffic peaks.
+- **Dynamic Slack Management**: Automatically injects "Time Buffers" during Orléans rush-hour (A10 Nord/Sud) to prevent cascading delays.
+- **Predictive Modeling**: Simulates traffic impact on the TCO (Total Cost of Ownership) before dispatching.
 
-## 🛠️ Tech Stack & Philosophy
+### ⚡ 2. Industrial Scalability (Performance)
+- **High-Density Solver**: Optimized with **Google OR-Tools** to handle 100+ delivery points in sub-second computation times.
+- **Synthetic Data Fabric**: Integrated "Real-World Business" generator to simulate enterprise-scale data in the Orléans periphery.
+- **Fleet Auto-scaling**: Dynamic asset management capable of managing massive influxes of orders through unit-controlled fleet cloning.
 
-- **Solver Engine**: Google OR-Tools (Parallel Cheapest Insertion + Guided Local Search).
-- **Digital Twin Visualization**: Pydeck (High-resolution GPS mapping).
-- **Operations Audit**: Plotly-powered Gantt charts for precise timeline tracking (Driving vs. Waiting).
-- **Data Engineering**: Modular clean architecture with Repository and Inventory patterns.
+### 💶 3. Full Financial Auditing (Digital Twin)
+- **Granular TCO**: Detailed breakdown of Gazole, Wages, Maintenance, and **CO2 Taxes**.
+- **Human-in-the-loop**: Strategic axial control (Economic, Balanced, Social) to balance cost efficiency with driver equity.
 
-## 📊 Business KPIs Optimized
+## 🛠️ Tech Stack
 
-1. **Load Factor (%)**: Objective-driven fleet selection to minimize empty runs.
-2. **Wage Optimization**: Strategic delayed-start logic (`SpanCost`) to eliminate idle waiting time.
-3. **Territory Specialization**: Hard CP constraints to enforce zone-based fleet management (NORTH/SOUTH/CITY).
+- **Optimization Core**: Google OR-Tools (Parallel Cheapest Insertion + Guided Local Search).
+- **Interface & UI**: Streamlit + Plotly + Pydeck.
+- **Domain Logic**: Pydantic-driven modular architecture.
+- **Standards**: **EU Regulation 561/2006** compliant (mandatory breaks).
+
+## 🌍 Orléans Territory Focus
+Detailed geographic handling of key industrial zones:
+- **NORD**: Saran, Artenay, Ormes (Pôle 45).
+- **CENTRE-VILLE**: Orléans downtown, Place d'Arc.
+- **SUD**: Olivet, Saint-Cyr-en-Val.
 
 ---
-*Created for the CESI Alternance Portfolio - Showcasing Industrial Problem Solving through AI.*
+*Created for the CESI Alternance Portfolio - Demonstrating Professional Problem Solving through Agentic AI.*
