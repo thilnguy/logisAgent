@@ -209,7 +209,7 @@ class EnterpriseRouteOptimizer:
                     "order_id": getattr(node, 'order_id', f'N/A-{i}'),
                     "address": node.address.name,
                     "weight_kg": node.weight_kg,
-                    "reason": "Time Window ou Capacité incompatible"
+                    "reason": "Fenêtre de temps ou Capacité incompatible"
                 })
                 logger.warning(f"⚠️ Dropped order: {node.address.name} ({node.weight_kg}kg)")
                 

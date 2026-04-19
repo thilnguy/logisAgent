@@ -20,11 +20,11 @@ def auto_zone(lat: float, lon: float) -> str:
     dist_km = math.sqrt(dlat_km**2 + dlon_km**2)
     
     if dist_km < 3.0:
-        return "CITY"
+        return "CENTRE-VILLE"
     elif lat >= 47.91:
-        return "NORTH"
+        return "NORD"
     else:
-        return "SOUTH"
+        return "SUD"
 
 class LogisticsRepository:
     """

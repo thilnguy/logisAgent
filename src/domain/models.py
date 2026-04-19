@@ -17,7 +17,7 @@ class DeliveryOrder(BaseModel):
     time_window: Optional[TimeWindow] = None
     service_time_minutes: int = Field(default=15, description="Temps de déchargement")
     priority: int = Field(default=1)
-    zone: Optional[str] = Field(default=None, description="Territory zone: NORTH, SOUTH, CITY")
+    zone: Optional[str] = Field(default=None, description="Zone de chalandise: NORD, SUD, CENTRE-VILLE")
 
 class Depot(BaseModel):
     depot_id: str
@@ -36,4 +36,4 @@ class Truck(BaseModel):
     wage_per_hour_euro: float = Field(default=25.0)
     maintenance_per_km_euro: float = Field(default=0.8)
     fixed_cost_euro: float = Field(default=0.0, description="Coût fixe d'activation du véhicule")
-    allowed_zones: list = Field(default=["NORTH", "SOUTH", "CITY"], description="Zones that this truck can serve")
+    allowed_zones: list = Field(default=["NORD", "SUD", "CENTRE-VILLE"], description="Zones autorisées pour ce véhicule")

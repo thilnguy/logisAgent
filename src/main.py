@@ -18,8 +18,8 @@ st.set_page_config(page_title="LogisAgent V4: Digital Twin & Strategic DSS", lay
 # Industrial Headers (Problem Solver Branding)
 st.title("🚛 LogisAgent V4: Digital Twin & Decision Support System")
 st.markdown("""
-*Hệ thống Hỗ trợ Ra quyết định (DSS) ứng dụng AI - Tối ưu hóa Chuỗi cung ứng theo tiêu chuẩn công nghiệp (EU 561/2006). 
-Tích hợp triết lý **Human-in-the-loop** & **Digital Twin** để quản trị TCO.*
+*Système d'Aide à la Décision (DSS) basé sur l'IA - Optimisation de la Supply Chain selon les normes industrielles (EU 561/2006). 
+Intègre les concepts de **Human-in-the-loop** & **Digital Twin** pour la gestion du TCO.*
 """)
 
 # 1. Initialize Mock DB / Repository
@@ -31,11 +31,11 @@ depots = repo.get_active_depots()
 
 # Global Fleet Definition (Digital Twin Assets)
 trucks = [
-    Truck(truck_id="T1-VUL-1", type_name="3.5t Downtown A", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0, fixed_cost_euro=35.0, allowed_zones=["CITY", "SOUTH"]),
-    Truck(truck_id="T1-VUL-2", type_name="3.5t Downtown B", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0, fixed_cost_euro=35.0, allowed_zones=["CITY", "NORTH"]),
-    Truck(truck_id="T2-PL-1", type_name="12t Ext A", capacity_kg=5000, start_depot_id="D1", end_depot_id="D2", co2_emission_rate_g_per_km=650.0, wage_per_hour_euro=25.0, fixed_cost_euro=65.0, allowed_zones=["NORTH"]),
-    Truck(truck_id="T2-PL-2", type_name="12t Ext B", capacity_kg=5000, start_depot_id="D2", end_depot_id="D1", co2_emission_rate_g_per_km=650.0, wage_per_hour_euro=27.0, fixed_cost_euro=65.0, allowed_zones=["SOUTH"]),
-    Truck(truck_id="T3-HGV", type_name="44t Artenay", capacity_kg=25000, start_depot_id="D2", end_depot_id="D2", co2_emission_rate_g_per_km=950.0, wage_per_hour_euro=30.0, fixed_cost_euro=120.0, allowed_zones=["NORTH"])
+    Truck(truck_id="T1-VUL-1", type_name="3.5t Downtown A", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0, fixed_cost_euro=35.0, allowed_zones=["CENTRE-VILLE", "SUD"]),
+    Truck(truck_id="T1-VUL-2", type_name="3.5t Downtown B", capacity_kg=1500, start_depot_id="D1", end_depot_id="D1", co2_emission_rate_g_per_km=280.0, wage_per_hour_euro=20.0, fixed_cost_euro=35.0, allowed_zones=["CENTRE-VILLE", "NORD"]),
+    Truck(truck_id="T2-PL-1", type_name="12t Ext A", capacity_kg=5000, start_depot_id="D1", end_depot_id="D2", co2_emission_rate_g_per_km=650.0, wage_per_hour_euro=25.0, fixed_cost_euro=65.0, allowed_zones=["NORD"]),
+    Truck(truck_id="T2-PL-2", type_name="12t Ext B", capacity_kg=5000, start_depot_id="D2", end_depot_id="D1", co2_emission_rate_g_per_km=650.0, wage_per_hour_euro=27.0, fixed_cost_euro=65.0, allowed_zones=["SUD"]),
+    Truck(truck_id="T3-HGV", type_name="44t Artenay", capacity_kg=25000, start_depot_id="D2", end_depot_id="D2", co2_emission_rate_g_per_km=950.0, wage_per_hour_euro=30.0, fixed_cost_euro=120.0, allowed_zones=["NORD"])
 ]
 
 # Provide simulated Inventory (all items in stock)
@@ -59,14 +59,14 @@ else:
 st.sidebar.markdown("---")
 st.sidebar.subheader("🎯 Stratégie Décisionnelle")
 strategy = st.sidebar.radio(
-    "Objectif ưu tiên",
-    ["Économique (Tối ưu tiền)", "Équilibré (Cân bằng)", "Social (Công bằng tài xế)"],
+    "Objectif prioritaire",
+    ["Économique (Optimisation Coût)", "Équilibré (Standard TCO)", "Social (Équité Chauffeurs)"],
     index=1,
-    help="Économique: Dùng ít xe nhất có thể | Équilibré: Tương quan chi phí/tải | Social: Chia đều đơn"
+    help="Économique: Minimum camions | Équilibré: TCO vs Charge | Social: Répartition égale"
 )
 
 # Advanced Sliders for Leadership fine-tuning
-with st.sidebar.expander("🛠️ Cấu hình Trade-offs (Nâng cao)"):
+with st.sidebar.expander("🛠️ Paramètres Trade-offs (Avancé)"):
     # Map presets to defaults
     if "Économique" in strategy:
         def_balance, def_span = 0, 500
@@ -75,8 +75,8 @@ with st.sidebar.expander("🛠️ Cấu hình Trade-offs (Nâng cao)"):
     else:  # Social
         def_balance, def_span = 600, 100
         
-    g_weight = st.slider("Cân bằng tải (GlobalSpan)", 0, 1000, def_balance)
-    s_weight = st.slider("Tối ưu lương/chờ (SpanCost)", 0, 1000, def_span)
+    g_weight = st.slider("Équilibrage Charge (GlobalSpan)", 0, 1000, def_balance)
+    s_weight = st.slider("Optimisation Salaire/Attente (SpanCost)", 0, 1000, def_span)
 
 st.sidebar.markdown("---")
 
@@ -95,7 +95,7 @@ if not st.session_state.orders:
 
 st.markdown("---")
 st.subheader("📋 WMS Data Feed (Audit)")
-st.caption("Dữ liệu thô từ hệ thống kho (Randomized). Người dùng có thể kiểm tra ở đây.")
+st.caption("Données brutes issues du WMS (Simulation). Audit utilisateur.")
 # Render WMS Orders as a visually clear Dataframe
 order_data = [{"Order ID": o.order_id, "Client": o.address.name, "Zone": o.zone or "N/A", "Weight (kg)": o.weight_kg, "Time Window": f"{o.time_window.start_minute//60:02d}:00 - {o.time_window.end_minute//60:02d}:00", "Unloading (mins)": o.service_time_minutes} for o in st.session_state.orders]
 df_audit = pd.DataFrame(order_data)
@@ -152,7 +152,7 @@ if "solution" in st.session_state:
             df_dropped = pd.DataFrame(dropped)
             st.dataframe(df_dropped, use_container_width=True)
     else:
-        st.success("✅ Toutes les commandes livrées avec succès.")
+        st.success("✅ Toutes les commandes sont planifiées avec succès.")
     
     # 3. Process TCO and metrics
     total_tco = 0.0
@@ -292,7 +292,7 @@ if "solution" in st.session_state:
 
     with tab1:
         # Build zone-colored markers for delivery points
-        zone_colors = {"NORTH": [0, 120, 255], "SOUTH": [0, 200, 100], "CITY": [255, 160, 0]}
+        zone_colors = {"NORD": [0, 120, 255], "SUD": [0, 200, 100], "CENTRE-VILLE": [255, 160, 0]}
         zone_markers = []
         for node in all_nodes:
             if hasattr(node, 'zone') and node.zone:
@@ -335,7 +335,7 @@ if "solution" in st.session_state:
             initial_view_state=view_state, 
             tooltip={"text": "{name}"}
         ))
-        st.caption("🔴 Dépôt | 🔵 NORTH | 🟢 SOUTH | 🟠 CITY")
+        st.caption("🔴 Dépôt | 🔵 NORD | 🟢 SUD | 🟠 CENTRE-VILLE")
 
     with tab2:
         df_gantt = pd.DataFrame(gantt_data)
@@ -353,7 +353,7 @@ if "solution" in st.session_state:
         # Nested Grid for Finances
         colA, colB = st.columns([1, 1])
         with colA:
-            st.metric("Total Cost of Ownership", f"{total_tco:.2f} €", "Incl. Wages, Fuel, Maintenance, CO2 Tax")
+            st.metric("Total Cost of Ownership", f"{total_tco:.2f} €", "Incl. Salaires, Gazole, Entretien, Taxe CO2")
             st.markdown("#### 🔍 Matrice d'Audit Financier par Camion")
             df_tco_dev = pd.DataFrame(tco_truck_details)
             st.dataframe(df_tco_dev, use_container_width=True)
@@ -361,10 +361,10 @@ if "solution" in st.session_state:
         with colB:
             # Audit View: Breakdown pie chart
             df_tco = pd.DataFrame({
-                "Cost Category": ["Fuel", "Wages", "Maintenance", "CO2 Tax"],
-                "Cost (€)": [tco_breakdown["fuel_euro"], tco_breakdown["wage_euro"], tco_breakdown["maintenance_euro"], tco_breakdown["co2_tax_euro"]]
+                "Catégorie de Coût": ["Gazole", "Salaires", "Entretien", "Taxe CO2"],
+                "Coût (€)": [tco_breakdown["fuel_euro"], tco_breakdown["wage_euro"], tco_breakdown["maintenance_euro"], tco_breakdown["co2_tax_euro"]]
             })
-            fig_pie = px.pie(df_tco, values="Cost (€)", names="Cost Category")
+            fig_pie = px.pie(df_tco, values="Coût (€)", names="Catégorie de Coût")
             fig_pie.update_layout(height=280, margin=dict(t=10, b=0, l=0, r=0))
             st.plotly_chart(fig_pie, use_container_width=True)
 
@@ -396,9 +396,9 @@ if "solution" in st.session_state:
 ---
 *Généré par LogisAgent DSS - Digital Twin Engine*
 """
-        st.info("💡 Bạn có thể tải báo cáo này dưới dạng Markdown/Text để đính kèm vào hồ sơ ứng tuyển.")
+        st.info("💡 Vous pouvez télécharger ce rapport au format Markdown/Texte pour l'inclure dans votre dossier de candidature.")
         st.download_button(
-            label="📩 Tải Báo cáo Quyết định (MD/PDF Simulation)",
+            label="📩 Télécharger le Rapport Décisionnel (Simulation)",
             data=report_data,
             file_name="rapport_logis_agent_v4.md",
             mime="text/markdown",
