@@ -16,10 +16,12 @@ Avant de lancer l'optimisation, configurez vos paramètres :
    - **Social** : Répartit équitablement le travail entre les chauffeurs.
    - *Astuce : Ouvrez "Cấu hình Trade-offs" pour un réglage manuel des poids.*
 
-### Étape 2 : Simulation WMS
-Cliquez sur **"📦 Simuler Flux Entrant (WMS)"**.
-- Le système génère des commandes fictives.
-- Consultez le tableau **📋 WMS Data Feed** pour vérifier les poids, fenêtres horaires (Time Windows) et Zones.
+### Étape 2 : Chargement des données (Simulation ou Import)
+1. **Choix du mode** : En haut de la barre latérale, la section **"Importation Industrielle"** vous permet de choisir :
+   - **Mode Simulation** : Désactivez "Activer Remplacement Manuel" et utilisez le curseur pour définir le volume.
+   - **Mode Manuel/Import** : Activez "Activer Remplacement Manuel" pour télécharger un fichier CSV/Excel.
+2. **Template** : Utilisez le bouton **"Télécharger Template CSV"** pour obtenir un fichier au format correct.
+3. **Éditeur Interactif** : Une fois les données chargées, vous pouvez modifier les coordonnées, le poids, les fenêtres horaires et la **Priorité** directement dans le tableau **"📋 WMS Data Feed & Éditeur Interactif"**.
 
 ### Étape 3 : Optimisation
 Cliquez sur **"🚀 Exécuter Solveur CVRPTW"**. 
