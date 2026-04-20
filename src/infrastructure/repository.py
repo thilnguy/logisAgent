@@ -66,6 +66,7 @@ class LogisticsRepository:
                 lon = float(row.get("Longitude", 1.9))
                 weight = float(row.get("Weight", 100))
                 priority = int(row.get("Priority", 1))
+                service_mins = int(row.get("Unloading_mins", 15))
                 
                 start_str = str(row.get("Start", "08:00"))
                 end_str = str(row.get("End", "18:00"))
@@ -81,6 +82,7 @@ class LogisticsRepository:
                     address={"name": name, "latitude": lat, "longitude": lon},
                     weight_kg=weight,
                     time_window=tw,
+                    service_time_minutes=service_mins,
                     priority=priority,
                     zone=auto_zone(lat, lon)
                 ))

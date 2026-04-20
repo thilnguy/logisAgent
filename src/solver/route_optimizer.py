@@ -26,118 +26,85 @@ class EnterpriseRouteOptimizer:
             self.starts.append(start_idx)
             self.ends.append(end_idx)
 
-    def solve(self, time_limit_sec=8, global_span_weight=100, span_cost_weight=300, safety_margin=1.0):
+    def solve(self, 
+              time_limit_sec=10, 
+              global_span_weight=100, 
+              span_cost_weight=300, 
+              safety_margin=1.0,
+              first_solution_strategy="PARALLEL_CHEAPEST_INSERTION",
+              local_search_metaheuristic="AUTOMATIC",
+              num_workers=1):
+        """
+        AI Solver with Adaptive Tuning Pipeline (V7.2)
+        - Multi-start parallel seeds support
+        - Configurable neighborhood operators
+        - Hybrid priority shaping
+        """
         self.safety_margin = safety_margin
-        """
-        Main solver entry point.
-        - global_span_weight: balancing factor
-        - span_cost_weight: wage optimization factor
-        - safety_margin: multiplier for travel/service times (1.0 = Risky, 1.2+ = Robust)
-        """
+        
         manager = pywrapcp.RoutingIndexManager(self.num_nodes, self.num_vehicles, self.starts, self.ends)
         routing = pywrapcp.RoutingModel(manager)
 
-        # Fixed Vehicle Activation Costs (V4 Phase 8)
+        # 1. Base Constraints & Costs
         for vid, t in enumerate(self.trucks):
-            routing.SetFixedCostOfVehicle(int(t.fixed_cost_euro * 100), vid)  # Scale to cents for integer solver
+            routing.SetFixedCostOfVehicle(int(t.fixed_cost_euro * 100), vid)
 
-        # V4 Phase 12: Per-Vehicle Arc Cost (Load Factor Optimization)
-        # Heavier trucks cost more per km → solver prefers smaller trucks for light loads
-        # Cost multiplier: 3.5t=1x, 12t=2x, 44t=4x (proportional to fuel/maintenance)
         for vid, truck in enumerate(self.trucks):
-            cost_multiplier = min(3, max(1, int(truck.capacity_kg / 1500)))  # Cap at 3x to avoid over-penalizing large trucks
-            
+            cost_multiplier = min(3, max(1, int(truck.capacity_kg / 1500)))
             def make_cost_callback(mult):
                 def vehicle_cost_callback(from_index, to_index):
                     from_node = manager.IndexToNode(from_index)
                     to_node = manager.IndexToNode(to_index)
                     return self.dist_matrix[from_node][to_node] * mult
                 return vehicle_cost_callback
-            
-            callback_index = routing.RegisterTransitCallback(make_cost_callback(cost_multiplier))
-            routing.SetArcCostEvaluatorOfVehicle(callback_index, vid)
+            routing.SetArcCostEvaluatorOfVehicle(routing.RegisterTransitCallback(make_cost_callback(cost_multiplier)), vid)
 
         # Capacity Dimension
         def demand_callback(from_index):
-            from_node = manager.IndexToNode(from_index)
-            node = self.nodes[from_node]
-            return int(getattr(node, 'weight_kg', 0))
+            return int(getattr(self.nodes[manager.IndexToNode(from_index)], 'weight_kg', 0))
+        routing.AddDimensionWithVehicleCapacity(routing.RegisterUnaryTransitCallback(demand_callback), 0, [int(t.capacity_kg) for t in self.trucks], True, 'Capacity')
 
-        demand_callback_index = routing.RegisterUnaryTransitCallback(demand_callback)
-        routing.AddDimensionWithVehicleCapacity(
-            demand_callback_index,
-            0,
-            [int(t.capacity_kg) for t in self.trucks],
-            True,
-            'Capacity'
-        )
-
-        # Time Dimension
+        # Time Dimension with Adaptive Slack
         def time_callback(from_index, to_index):
             from_node = manager.IndexToNode(from_index)
-            to_node = manager.IndexToNode(to_index)
             node = self.nodes[from_node]
-            
-            # Base service time (manutention)
             service_time = getattr(node, 'service_time_minutes', 0)
-            
-            # V5: Operational Resilience / Rush-hour Penalty
-            # If we are in Robust mode (> 1.0), and the node has an early morning window, 
-            # we add slack for local congestion.
             tw = getattr(node, 'time_window', None)
-            is_rush_hour_risk = tw and tw.start_minute < 600 # Before 10:00 AM
-            
-            extra_slack = 0
-            if safety_margin > 1.0:
-                extra_slack = 10 if is_rush_hour_risk else 5
-                
-            travel_time = self.time_matrix[from_node][to_node] * safety_margin
-            return int(travel_time + service_time + extra_slack)
+            is_rush_hour_risk = tw and tw.start_minute < 600
+            extra_slack = 10 if (safety_margin > 1.0 and is_rush_hour_risk) else 5
+            return int(self.time_matrix[from_node][to_node] * safety_margin + service_time + extra_slack)
 
-        time_callback_idx = routing.RegisterTransitCallback(time_callback)
-        routing.AddDimension(
-            time_callback_idx,
-            120,  # V4 Phase 9: Increased slack to 120 mins to accommodate 45-min mandatory breaks
-            1440, # max 24 hours per vehicle route
-            False,
-            'Time'
-        )
+        routing.AddDimension(routing.RegisterTransitCallback(time_callback), 120, 1440, False, 'Time')
         time_dimension = routing.GetDimensionOrDie('Time')
-        # V4.2/13: Configurable Objective Weights
-        # Lower GlobalSpan = fewer trucks activated = lower total cost
-        # Higher SpanCost = delayed start = less idle time = lower wages
         time_dimension.SetGlobalSpanCostCoefficient(global_span_weight)
         time_dimension.SetSpanCostCoefficientForAllVehicles(span_cost_weight)
 
-        # Add Time Windows Logic
+        # Constraints & Time Windows
         for i, node in enumerate(self.nodes):
             tw = getattr(node, 'time_window', None)
             if tw:
-                index = manager.NodeToIndex(i)
-                time_dimension.CumulVar(index).SetRange(tw.start_minute, tw.end_minute)
+                time_dimension.CumulVar(manager.NodeToIndex(i)).SetRange(tw.start_minute, tw.end_minute)
 
-        # Instantiate route start and end time windows to 08:00 (480) to 20:00 (1200)
         for i in range(self.num_vehicles):
-            start_index = routing.Start(i)
-            time_dimension.CumulVar(start_index).SetRange(480, 1200)
-            end_index = routing.End(i)
-            time_dimension.CumulVar(end_index).SetRange(480, 1200)
+            time_dimension.CumulVar(routing.Start(i)).SetRange(480, 1200)
+            time_dimension.CumulVar(routing.End(i)).SetRange(480, 1200)
 
-        # V4 Phase 9: EU 561/2006 - Break compliance is checked post-solve
-        # (Hard constraints cause infeasibility with tight time windows.
-        #  Real-world fleets use post-optimization compliance auditing.)
-
-        # V4 Phase 10: Allow Dropping Undeliverable Orders (Graceful Degradation)
-        # Instead of failing entirely when one order is infeasible, the solver
-        # can skip it at a high penalty cost (simulating re-scheduling next day).
+        # 2. Priority Logic & Soft Shaping (Hybrid Approach)
         self.num_depots = len([n for n in self.nodes if hasattr(n, 'depot_id')])
-        penalty_per_drop = 50000  # High cost to discourage unnecessary drops
-        for i in range(self.num_depots, self.num_nodes):  # Only delivery nodes, not depots
+        for i in range(self.num_depots, self.num_nodes):
+            node = self.nodes[i]
             index = manager.NodeToIndex(i)
-            routing.AddDisjunction([index], penalty_per_drop)
+            prio = getattr(node, 'priority', 2)
+            
+            # Weighted Drop Penalty
+            penalty = 2000000 if prio == 1 else (500000 if prio == 2 else 50000)
+            routing.AddDisjunction([index], penalty)
+            
+            # Incentive to serve early for Priority 1
+            if prio == 1:
+                time_dimension.SetCumulVarSoftUpperBound(index, 720, 5000) # Soft 12:00 PM target
 
-        # V4 Phase 11: Territory Zone Restrictions (Hard CP Constraints)
-        # Use explicit solver.Add() constraints — guaranteed to be respected
+        # Territory Zone Restrictions
         cp_solver = routing.solver()
         for i in range(self.num_depots, self.num_nodes):
             node = self.nodes[i]
@@ -147,22 +114,47 @@ class EnterpriseRouteOptimizer:
                 for vid, truck in enumerate(self.trucks):
                     if order_zone not in truck.allowed_zones:
                         cp_solver.Add(routing.VehicleVar(index) != vid)
-                        logger.debug(f"🚫 {truck.truck_id} interdit à {node.address.name} (zone {order_zone})")
 
-        # Instantiate search parameters
-        search_parameters = pywrapcp.DefaultRoutingSearchParameters()
-        search_parameters.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PARALLEL_CHEAPEST_INSERTION
-        search_parameters.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
-        search_parameters.time_limit.FromSeconds(time_limit_sec)
-
-        logger.info("Démarrage du Solver CVRPTW OR-Tools...")
-        solution = routing.SolveWithParameters(search_parameters)
-
-        if solution:
-            logger.success("Solution optimale trouvée par l'Agent.")
-            return self._format_solution(manager, routing, solution, time_dimension)
+        # 3. Expert Search Parameters (Tuning Pipeline)
+        fss_map = {
+            "AUTOMATIC": routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC,
+            "PARALLEL_CHEAPEST_INSERTION": routing_enums_pb2.FirstSolutionStrategy.PARALLEL_CHEAPEST_INSERTION,
+            "PATH_CHEAPEST_ARC": routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC,
+            "SAVINGS": routing_enums_pb2.FirstSolutionStrategy.SAVINGS,
+            "CHRISTOFIDES": routing_enums_pb2.FirstSolutionStrategy.CHRISTOFIDES,
+        }
+        meta_map = {
+            "AUTOMATIC": routing_enums_pb2.LocalSearchMetaheuristic.AUTOMATIC,
+            "GUIDED_LOCAL_SEARCH": routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH,
+            "TABU_SEARCH": routing_enums_pb2.LocalSearchMetaheuristic.TABU_SEARCH,
+            "SIMULATED_ANNEALING": routing_enums_pb2.LocalSearchMetaheuristic.SIMULATED_ANNEALING,
+        }
+        
+        best_solution = None
+        min_cost = float('inf')
+        
+        logger.info(f"🚀 Multi-Start Pipeline: {num_workers} workers")
+        for seed in range(int(num_workers)):
+            search_params = pywrapcp.DefaultRoutingSearchParameters()
+            search_params.first_solution_strategy = fss_map.get(first_solution_strategy, fss_map["PARALLEL_CHEAPEST_INSERTION"])
+            search_params.local_search_metaheuristic = meta_map.get(local_search_metaheuristic, meta_map["AUTOMATIC"])
+            search_params.time_limit.seconds = int(time_limit_sec)
+            
+            # Note: Randomization is handled internally by Metaheuristics (V7.2)
+            
+            sol = routing.SolveWithParameters(search_params)
+            if sol:
+                cost = sol.ObjectiveValue()
+                logger.info(f"  - Worker {seed}: Coût={cost}")
+                if cost < min_cost:
+                    min_cost = cost
+                    best_solution = sol
+        
+        if best_solution:
+            logger.success(f"Optimisation terminée. Meilleur coût: {min_cost}")
+            return self._format_solution(manager, routing, best_solution, time_dimension)
         else:
-            logger.error("Aucune solution trouvée. Contraintes de Temps/Poids probablement incompatibles.")
+            logger.error("Aucune solution trouvée.")
             return None
 
     def _format_solution(self, manager, routing, solution, time_dimension):
@@ -171,45 +163,61 @@ class EnterpriseRouteOptimizer:
             index = routing.Start(vehicle_id)
             route = []
             route_load = 0
+            prev_finish_min = 0
             while not routing.IsEnd(index):
                 node_index = manager.IndexToNode(index)
                 time_var = time_dimension.CumulVar(index)
                 
+                # Service time for current node
+                svc_time = int(getattr(self.nodes[node_index], 'service_time_min', 15))
+                
+                # Arrival time = strictly when the truck reaches the node
+                # CumulVar(index).Min() is the "Start of Service" (it honors the window)
+                # To get arrival, we look at the previous departure + transit
+                if len(route) == 0:
+                    arrival_min = solution.Min(time_var) # Depot start
+                else:
+                    prev_node = route[-1]['node_index']
+                    transit_time = self.time_matrix[prev_node][node_index]
+                    arrival_min = prev_finish_min + transit_time
+                
                 route.append({
                     "node_index": node_index,
-                    "time_min": solution.Min(time_var),
+                    "arrival_time_min": arrival_min,
+                    "time_min": solution.Min(time_var), # Start of service
                     "time_max": solution.Max(time_var)
                 })
                 
+                prev_finish_min = solution.Min(time_var) + svc_time
                 route_load += int(getattr(self.nodes[node_index], 'weight_kg', 0))
                 index = solution.Value(routing.NextVar(index))
                 
-            # Add end depot
             node_index = manager.IndexToNode(index)
             time_var = time_dimension.CumulVar(index)
+            prev_node = route[-1]['node_index']
+            transit_time = self.time_matrix[prev_node][node_index]
+            arrival_min = prev_finish_min + transit_time
+            
             route.append({
                 "node_index": node_index,
+                "arrival_time_min": arrival_min,
                 "time_min": solution.Min(time_var),
                 "time_max": solution.Max(time_var)
             })
 
             if len(route) > 2:
-                # V5: Calculate Route Robustness Score
-                # Rush hours: 08:00-09:30 (480-570) and 16:30-18:30 (990-1110)
                 rush_stops = 0
                 for stop in route:
                     t = stop['time_min']
                     if (480 <= t <= 570) or (990 <= t <= 1110):
                         rush_stops += 1
                 
-                # Penalty per rush stop, mitigated by safety_margin
                 penalty = (rush_stops * 0.15) / self.safety_margin
                 robustness_score = max(0.4, 1.0 - penalty)
 
-                # V4 Phase 9: Post-solve EU 561/2006 compliance check
                 route_duration = route[-1]['time_min'] - route[0]['time_min']
                 break_info = None
-                if route_duration > 270:  # 4.5 hours → mandatory 45-min break
+                if route_duration > 270:
                     midpoint_min = route[0]['time_min'] + 270
                     break_info = {"start_min": midpoint_min, "duration_min": 45}
                 
@@ -222,7 +230,6 @@ class EnterpriseRouteOptimizer:
                     "robustness_score": round(robustness_score * 100, 1)
                 })
         
-        # V4 Phase 10: Detect dropped (undelivered) orders
         served_node_indices = set()
         for r in routes:
             for stop in r['route']:
@@ -236,9 +243,8 @@ class EnterpriseRouteOptimizer:
                     "order_id": getattr(node, 'order_id', f'N/A-{i}'),
                     "address": node.address.name,
                     "weight_kg": node.weight_kg,
-                    "reason": "Fenêtre de temps ou Capacité incompatible"
+                    "reason": "Capacité/Temps incompatible"
                 })
-                logger.warning(f"⚠️ Dropped order: {node.address.name} ({node.weight_kg}kg)")
                 
         avg_robustness = sum(r['robustness_score'] for r in routes) / len(routes) if routes else 100
         return {

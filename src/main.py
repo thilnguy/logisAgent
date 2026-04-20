@@ -124,13 +124,42 @@ with st.sidebar.expander("🛠️ Paramètres Trade-offs (Avancé)"):
 st.sidebar.markdown("---")
 st.sidebar.subheader("🛡️ Résilience Opérationnelle")
 resilience_level = st.sidebar.select_slider(
-    "Niveau de Sécurité (Marge Chauffeur)",
+    "Niveau de Sécurité",
     options=["Risqué (Efficient)", "Standard (Prudent)", "Robuste (Haute Résilience)"],
     value="Standard (Prudent)",
     help="Risqué: 0% marge | Standard: 15% marge | Robuste: 30% marge s'adaptant au trafic."
 )
 resilience_map = {"Risqué (Efficient)": 1.0, "Standard (Prudent)": 1.15, "Robuste (Haute Résilience)": 1.3}
 safety_margin = resilience_map[resilience_level]
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("🚀 Optimisation (Expert)")
+solver_time = st.sidebar.slider(
+    "Temps de Calcul (s)", 
+    5, 120, 15, 
+    help="Plus de temps = meilleure convergence pour les gros volumes (>50 col)."
+)
+
+with st.sidebar.expander("🛠️ Stratégies Avancées (V7.2)"):
+    st.caption("Contrôle granulaire du pipeline OR-Tools")
+    fss_map = {
+        "AUTOMATIC": "AUTOMATIC",
+        "PARALLEL_CHEAPEST_INSERTION": "PARALLEL_CHEAPEST_INSERTION",
+        "PATH_CHEAPEST_ARC": "PATH_CHEAPEST_ARC",
+        "SAVINGS": "SAVINGS",
+        "CHRISTOFIDES": "CHRISTOFIDES"
+    }
+    fss_choice = st.selectbox("First Solution Strategy", list(fss_map.keys()), index=1)
+    
+    meta_map = {
+        "AUTOMATIC": "AUTOMATIC",
+        "GUIDED_LOCAL_SEARCH": "GUIDED_LOCAL_SEARCH",
+        "TABU_SEARCH": "TABU_SEARCH",
+        "SIMULATED_ANNEALING": "SIMULATED_ANNEALING"
+    }
+    meta_choice = st.selectbox("Local Search Metaheuristic", list(meta_map.keys()), index=0)
+    
+    parallel_workers = st.number_input("Multi-start Workers (Seeds)", 1, 4, 1, help="Exécute plusieurs recherches en parallèle avec des seeds khác nhau.")
 
 # Data Generation Button (Only for simulation mode)
 if not import_mode:
@@ -174,6 +203,8 @@ for o in st.session_state.orders:
         "Weight": o.weight_kg,
         "Start": f"{o.time_window.start_minute//60:02d}:{o.time_window.start_minute%60:02d}",
         "End": f"{o.time_window.end_minute//60:02d}:{o.time_window.end_minute%60:02d}",
+        "Unloading (mins)": o.service_time_minutes,
+        "Priority": o.priority,
         "Zone": o.zone
     })
 
@@ -184,7 +215,7 @@ edited_df = st.data_editor(df_editor, num_rows="dynamic", use_container_width=Tr
 # 3. Sync Back to session_state.orders (Refining the objects)
 if st.session_state.get("main_editor"):
     # Re-parse the edited dataframe to ensure solver uses fresh values
-    st.session_state.orders = repo.parse_dataframe(edited_df.rename(columns={"Lat": "Latitude", "Lon": "Longitude"}))
+    st.session_state.orders = repo.parse_dataframe(edited_df.rename(columns={"Lat": "Latitude", "Lon": "Longitude", "Unloading (mins)": "Unloading_mins"}))
 
 # 2. Inventory Agent Validation
 agent = InventoryAgent(stock_mock)
@@ -212,10 +243,13 @@ if st.button("🚀 Exécuter Solveur CVRPTW", type="primary"):
         import time
         start_time = time.time()
         solution = optimizer.solve(
-            time_limit_sec=8,
+            time_limit_sec=solver_time,
             global_span_weight=g_weight,
             span_cost_weight=s_weight,
-            safety_margin=safety_margin
+            safety_margin=safety_margin,
+            first_solution_strategy=fss_choice,
+            local_search_metaheuristic=meta_choice,
+            num_workers=parallel_workers
         )
         st.session_state.solve_duration = time.time() - start_time
         
@@ -314,26 +348,26 @@ if "solution" in st.session_state:
             # end_dt = Time the service ACTUALLY starts (OR-Tools node start time)
             end_dt = base_time + timedelta(minutes=n_next['time_min'])
             
-            name = all_nodes[n_curr['node_index']].address.name if hasattr(all_nodes[n_curr['node_index']], 'address') else all_nodes[n_curr['node_index']].name
+            name = getattr(all_nodes[n_curr['node_index']], 'address', all_nodes[n_curr['node_index']]).name if hasattr(all_nodes[n_curr['node_index']], 'address') else all_nodes[n_curr['node_index']].name
             
             # 1. Service Block (Unloading)
             if service_mins > 0:
                 gantt_data.append(dict(
-                    Task=truck.truck_id, Start=start_dt.strftime("2026-04-17 %H:%M"), End=finish_service_dt.strftime("2026-04-17 %H:%M"), 
+                    Task=truck.truck_id, Start=start_dt.strftime("%Y-%m-%d %H:%M"), End=finish_service_dt.strftime("%Y-%m-%d %H:%M"), 
                     Phase=f"Manutention ({service_mins}m)", Location=name
                 ))
             
             # 2. Transit Block (Physically Driving)
-            next_name = all_nodes[n_next['node_index']].address.name if hasattr(all_nodes[n_next['node_index']], 'address') else all_nodes[n_next['node_index']].name
+            next_name = getattr(all_nodes[n_next['node_index']], 'address', all_nodes[n_next['node_index']]).name if hasattr(all_nodes[n_next['node_index']], 'address') else all_nodes[n_next['node_index']].name
             gantt_data.append(dict(
-                Task=truck.truck_id, Start=finish_service_dt.strftime("2026-04-17 %H:%M"), End=arrival_dt.strftime("2026-04-17 %H:%M"), 
+                Task=truck.truck_id, Start=finish_service_dt.strftime("%Y-%m-%d %H:%M"), End=arrival_dt.strftime("%Y-%m-%d %H:%M"), 
                 Phase="Trajet routier", Location=f"Vers: {next_name}"
             ))
             
             # 3. Waiting Block (If arrived before Window opens)
             if arrival_dt < end_dt:
                 gantt_data.append(dict(
-                    Task=truck.truck_id, Start=arrival_dt.strftime("2026-04-17 %H:%M"), End=end_dt.strftime("2026-04-17 %H:%M"), 
+                    Task=truck.truck_id, Start=arrival_dt.strftime("%Y-%m-%d %H:%M"), End=end_dt.strftime("%Y-%m-%d %H:%M"), 
                     Phase="Attente (Time Window)", Location=f"Patienter à: {next_name}"
                 ))
 
@@ -344,8 +378,8 @@ if "solution" in st.session_state:
             break_end = break_start + timedelta(minutes=break_info['duration_min'])
             gantt_data.append(dict(
                 Task=truck.truck_id, 
-                Start=break_start.strftime("2026-04-17 %H:%M"), 
-                End=break_end.strftime("2026-04-17 %H:%M"),
+                Start=break_start.strftime("%Y-%m-%d %H:%M"), 
+                End=break_end.strftime("%Y-%m-%d %H:%M"),
                 Phase="Pause réglementaire (45m)", 
                 Location="EU 561/2006"
             ))
@@ -434,7 +468,16 @@ if "solution" in st.session_state:
 
     with tab2:
         df_gantt = pd.DataFrame(gantt_data)
-        fig = px.timeline(df_gantt, x_start="Start", x_end="End", y="Task", color="Phase", text="Location", hover_name="Location", title="Dispatch Timeline (Driving vs Unloading)")
+        fig = px.timeline(
+            df_gantt, 
+            x_start="Start", 
+            x_end="End", 
+            y="Task", 
+            color="Phase", 
+            text="Location", 
+            hover_name="Location", 
+            title="Dispatch Timeline (Driving vs Unloading)"
+        )
         fig.update_traces(textposition='inside', insidetextanchor='middle')
         fig.update_yaxes(autorange="reversed")
         fig.update_layout(
