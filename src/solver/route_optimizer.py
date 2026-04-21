@@ -2,6 +2,8 @@ from loguru import logger
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 from typing import List
+import concurrent.futures
+import time
 
 class EnterpriseRouteOptimizer:
     def __init__(self, all_nodes: list, trucks: list, dist_matrix: list, time_matrix: list):
@@ -25,6 +27,8 @@ class EnterpriseRouteOptimizer:
             end_idx = next(i for i, n in enumerate(self.nodes) if getattr(n, 'depot_id', None) == t.end_depot_id)
             self.starts.append(start_idx)
             self.ends.append(end_idx)
+        
+        self.num_depots = len([n for n in self.nodes if hasattr(n, 'depot_id')])
 
     def solve(self, 
               time_limit_sec=10, 
@@ -33,15 +37,85 @@ class EnterpriseRouteOptimizer:
               safety_margin=1.0,
               first_solution_strategy="PARALLEL_CHEAPEST_INSERTION",
               local_search_metaheuristic="AUTOMATIC",
-              num_workers=1):
+              num_workers=1,
+              ensemble_mode=False,
+              solution_limit=1000):
         """
-        AI Solver with Adaptive Tuning Pipeline (V7.2)
-        - Multi-start parallel seeds support
-        - Configurable neighborhood operators
-        - Hybrid priority shaping
+        AI Solver with Architecture V8.0
+        - Parallel Ensemble Orchestrator (Concurrent Futures)
+        - Adaptive Priority Scaling
+        - Robust Neighborhood Operators
         """
         self.safety_margin = safety_margin
         
+        # Strategy Ensemble Configuration
+        if ensemble_mode:
+            # Distributed strategies across workers
+            strategies = [
+                ("PARALLEL_CHEAPEST_INSERTION", "GUIDED_LOCAL_SEARCH"),
+                ("PATH_CHEAPEST_ARC", "TABU_SEARCH"),
+                ("SAVINGS", "SIMULATED_ANNEALING"),
+                ("CHRISTOFIDES", "AUTOMATIC"),
+                ("AUTOMATIC", "GUIDED_LOCAL_SEARCH"),
+                ("PARALLEL_CHEAPEST_INSERTION", "TABU_SEARCH"),
+                ("SAVINGS", "GUIDED_LOCAL_SEARCH"),
+                ("PATH_CHEAPEST_ARC", "AUTOMATIC")
+            ]
+            worker_configs = strategies[:num_workers]
+        else:
+            # Single strategy multi-seed
+            worker_configs = [(first_solution_strategy, local_search_metaheuristic)] * num_workers
+
+        best_result = None
+        min_cost = float('inf')
+
+        import concurrent.futures
+        from functools import partial
+
+        logger.info(f"🚀 Launching Parallel Ensemble: {len(worker_configs)} workers")
+        
+        worker_results = []
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+            # We must build the model inside each thread for safety
+            futures = []
+            for i, (fss, meta) in enumerate(worker_configs):
+                futures.append(executor.submit(
+                    self._solve_worker, 
+                    time_limit_sec=time_limit_sec,
+                    global_span_weight=global_span_weight,
+                    span_cost_weight=span_cost_weight,
+                    fss_name=fss,
+                    meta_name=meta,
+                    solution_limit=solution_limit,
+                    seed=i
+                ))
+            
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    result = future.result()
+                    if result:
+                        worker_results.append({
+                            "strategy": f"{result['fss']} + {result['meta']}",
+                            "cost": result['cost']
+                        })
+                        if result['cost'] < min_cost:
+                            min_cost = result['cost']
+                            best_result = result['data']
+                            logger.info(f"  - Worker found better solution: Coût={min_cost}")
+                except Exception as e:
+                    logger.error(f"❌ Worker failed: {e}")
+
+        if best_result:
+            logger.success(f"Optimisation terminée. Meilleur coût: {min_cost}")
+            best_result['worker_results'] = sorted(worker_results, key=lambda x: x['cost'])
+            return best_result
+        else:
+            logger.error("Aucune solution trouvée.")
+            return None
+
+    def _solve_worker(self, time_limit_sec, global_span_weight, span_cost_weight, fss_name, meta_name, solution_limit, seed):
+        """Isolated solver run for parallel execution."""
         manager = pywrapcp.RoutingIndexManager(self.num_nodes, self.num_vehicles, self.starts, self.ends)
         routing = pywrapcp.RoutingModel(manager)
 
@@ -53,69 +127,69 @@ class EnterpriseRouteOptimizer:
             cost_multiplier = min(3, max(1, int(truck.capacity_kg / 1500)))
             def make_cost_callback(mult):
                 def vehicle_cost_callback(from_index, to_index):
-                    from_node = manager.IndexToNode(from_index)
-                    to_node = manager.IndexToNode(to_index)
-                    return self.dist_matrix[from_node][to_node] * mult
+                    fn = manager.IndexToNode(from_index)
+                    tn = manager.IndexToNode(to_index)
+                    return self.dist_matrix[fn][tn] * mult
                 return vehicle_cost_callback
             routing.SetArcCostEvaluatorOfVehicle(routing.RegisterTransitCallback(make_cost_callback(cost_multiplier)), vid)
 
-        # Capacity Dimension
+        # Dimension: Capacity
         def demand_callback(from_index):
             return int(getattr(self.nodes[manager.IndexToNode(from_index)], 'weight_kg', 0))
         routing.AddDimensionWithVehicleCapacity(routing.RegisterUnaryTransitCallback(demand_callback), 0, [int(t.capacity_kg) for t in self.trucks], True, 'Capacity')
 
-        # Time Dimension with Adaptive Slack
+        # Dimension: Time with Adaptive Slack
         def time_callback(from_index, to_index):
-            from_node = manager.IndexToNode(from_index)
-            node = self.nodes[from_node]
-            service_time = getattr(node, 'service_time_minutes', 0)
+            fn = manager.IndexToNode(from_index)
+            node = self.nodes[fn]
+            svc = getattr(node, 'service_time_minutes', 0)
             tw = getattr(node, 'time_window', None)
-            is_rush_hour_risk = tw and tw.start_minute < 600
-            extra_slack = 10 if (safety_margin > 1.0 and is_rush_hour_risk) else 5
-            return int(self.time_matrix[from_node][to_node] * safety_margin + service_time + extra_slack)
+            risk = tw and tw.start_minute < 600
+            slack = 10 if (self.safety_margin > 1.0 and risk) else 5
+            return int(self.time_matrix[fn][manager.IndexToNode(to_index)] * self.safety_margin + svc + slack)
 
-        routing.AddDimension(routing.RegisterTransitCallback(time_callback), 120, 1440, False, 'Time')
-        time_dimension = routing.GetDimensionOrDie('Time')
-        time_dimension.SetGlobalSpanCostCoefficient(global_span_weight)
-        time_dimension.SetSpanCostCoefficientForAllVehicles(span_cost_weight)
+        routing.AddDimension(routing.RegisterTransitCallback(time_callback), 1440, 1440, False, 'Time')
+        time_dim = routing.GetDimensionOrDie('Time')
+        time_dim.SetGlobalSpanCostCoefficient(global_span_weight)
+        time_dim.SetSpanCostCoefficientForAllVehicles(span_cost_weight)
 
-        # Constraints & Time Windows
+        # Constraints
         for i, node in enumerate(self.nodes):
             tw = getattr(node, 'time_window', None)
             if tw:
-                time_dimension.CumulVar(manager.NodeToIndex(i)).SetRange(tw.start_minute, tw.end_minute)
-
+                time_dim.CumulVar(manager.NodeToIndex(i)).SetRange(tw.start_minute, tw.end_minute)
+        
         for i in range(self.num_vehicles):
-            time_dimension.CumulVar(routing.Start(i)).SetRange(480, 1200)
-            time_dimension.CumulVar(routing.End(i)).SetRange(480, 1200)
+            time_dim.CumulVar(routing.Start(i)).SetRange(360, 1320) # 06:00 to 22:00
+            time_dim.CumulVar(routing.End(i)).SetRange(360, 1320)
 
-        # 2. Priority Logic & Soft Shaping (Hybrid Approach)
-        self.num_depots = len([n for n in self.nodes if hasattr(n, 'depot_id')])
+        # Adaptive Priority Scaling
         for i in range(self.num_depots, self.num_nodes):
             node = self.nodes[i]
-            index = manager.NodeToIndex(i)
+            idx = manager.NodeToIndex(i)
             prio = getattr(node, 'priority', 2)
+            weight = getattr(node, 'weight_kg', 0)
             
-            # Weighted Drop Penalty
-            penalty = 2000000 if prio == 1 else (500000 if prio == 2 else 50000)
-            routing.AddDisjunction([index], penalty)
+            # Dynamic penalty: high importance for priority 1, scaled by payload
+            base_p = 2000000 if prio == 1 else 500000
+            adj_p = int(base_p * (1 + (weight / 5000))) 
+            routing.AddDisjunction([idx], adj_p)
             
-            # Incentive to serve early for Priority 1
             if prio == 1:
-                time_dimension.SetCumulVarSoftUpperBound(index, 720, 5000) # Soft 12:00 PM target
+                time_dim.SetCumulVarSoftUpperBound(idx, 720, 10000) # Strong 12:00 PM target
 
-        # Territory Zone Restrictions
+        # Zone logic
         cp_solver = routing.solver()
         for i in range(self.num_depots, self.num_nodes):
             node = self.nodes[i]
-            order_zone = getattr(node, 'zone', None)
-            if order_zone:
-                index = manager.NodeToIndex(i)
+            zone = getattr(node, 'zone', None)
+            if zone:
+                idx = manager.NodeToIndex(i)
                 for vid, truck in enumerate(self.trucks):
-                    if order_zone not in truck.allowed_zones:
-                        cp_solver.Add(routing.VehicleVar(index) != vid)
+                    if zone not in truck.allowed_zones:
+                        cp_solver.Add(routing.VehicleVar(idx) != vid)
 
-        # 3. Expert Search Parameters (Tuning Pipeline)
+        # Search Parameters
         fss_map = {
             "AUTOMATIC": routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC,
             "PARALLEL_CHEAPEST_INSERTION": routing_enums_pb2.FirstSolutionStrategy.PARALLEL_CHEAPEST_INSERTION,
@@ -129,33 +203,25 @@ class EnterpriseRouteOptimizer:
             "TABU_SEARCH": routing_enums_pb2.LocalSearchMetaheuristic.TABU_SEARCH,
             "SIMULATED_ANNEALING": routing_enums_pb2.LocalSearchMetaheuristic.SIMULATED_ANNEALING,
         }
+
+        search_params = pywrapcp.DefaultRoutingSearchParameters()
+        search_params.first_solution_strategy = fss_map.get(fss_name, fss_map["AUTOMATIC"])
+        search_params.local_search_metaheuristic = meta_map.get(meta_name, meta_map["AUTOMATIC"])
+        search_params.time_limit.seconds = int(time_limit_sec)
+        search_params.solution_limit = int(solution_limit)
         
-        best_solution = None
-        min_cost = float('inf')
+        # B: Enable Robust Neighborhood Operators
+        search_params.local_search_operators.use_relocate = pywrapcp.BOOL_TRUE
+        search_params.local_search_operators.use_exchange = pywrapcp.BOOL_TRUE
+        search_params.local_search_operators.use_cross = pywrapcp.BOOL_TRUE
+        search_params.local_search_operators.use_two_opt = pywrapcp.BOOL_TRUE
         
-        logger.info(f"🚀 Multi-Start Pipeline: {num_workers} workers")
-        for seed in range(int(num_workers)):
-            search_params = pywrapcp.DefaultRoutingSearchParameters()
-            search_params.first_solution_strategy = fss_map.get(first_solution_strategy, fss_map["PARALLEL_CHEAPEST_INSERTION"])
-            search_params.local_search_metaheuristic = meta_map.get(local_search_metaheuristic, meta_map["AUTOMATIC"])
-            search_params.time_limit.seconds = int(time_limit_sec)
-            
-            # Note: Randomization is handled internally by Metaheuristics (V7.2)
-            
-            sol = routing.SolveWithParameters(search_params)
-            if sol:
-                cost = sol.ObjectiveValue()
-                logger.info(f"  - Worker {seed}: Coût={cost}")
-                if cost < min_cost:
-                    min_cost = cost
-                    best_solution = sol
-        
-        if best_solution:
-            logger.success(f"Optimisation terminée. Meilleur coût: {min_cost}")
-            return self._format_solution(manager, routing, best_solution, time_dimension)
-        else:
-            logger.error("Aucune solution trouvée.")
-            return None
+        sol = routing.SolveWithParameters(search_params)
+        if sol:
+            formatted = self._format_solution(manager, routing, sol, time_dim)
+            return {'cost': sol.ObjectiveValue(), 'data': formatted, 'fss': fss_name, 'meta': meta_name}
+        return None
+
 
     def _format_solution(self, manager, routing, solution, time_dimension):
         routes = []
@@ -169,7 +235,7 @@ class EnterpriseRouteOptimizer:
                 time_var = time_dimension.CumulVar(index)
                 
                 # Service time for current node
-                svc_time = int(getattr(self.nodes[node_index], 'service_time_min', 15))
+                svc_time = int(getattr(self.nodes[node_index], 'service_time_minutes', 0))
                 
                 # Arrival time = strictly when the truck reaches the node
                 # CumulVar(index).Min() is the "Start of Service" (it honors the window)
