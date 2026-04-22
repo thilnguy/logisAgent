@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional
+from datetime import datetime
 
 class TimeWindow(BaseModel):
     start_minute: int = Field(..., description="Minutes from midnight (e.g. 480 = 08:00)")
@@ -18,6 +19,7 @@ class DeliveryOrder(BaseModel):
     service_time_minutes: int = Field(default=15, description="Temps de déchargement")
     priority: int = Field(default=1)
     zone: Optional[str] = Field(default=None, description="Zone de chalandise: NORD, SUD, CENTRE-VILLE")
+    scheduled_date: str = Field(default_factory=lambda: datetime.now().strftime('%Y-%m-%d'))
 
 class Depot(BaseModel):
     depot_id: str

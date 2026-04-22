@@ -2,6 +2,7 @@ import json
 import random
 import math
 import pandas as pd
+from datetime import datetime
 from typing import List, Dict
 from domain.models import Depot, DeliveryOrder, Address, TimeWindow
 
@@ -67,6 +68,7 @@ class LogisticsRepository:
                 weight = float(row.get("Weight", 100))
                 priority = int(row.get("Priority", 1))
                 service_mins = int(row.get("Unloading_mins", 15))
+                date_str = str(row.get("Date", datetime.now().strftime('%Y-%m-%d')))
                 
                 start_str = str(row.get("Start", "08:00"))
                 end_str = str(row.get("End", "18:00"))
@@ -84,7 +86,8 @@ class LogisticsRepository:
                     time_window=tw,
                     service_time_minutes=service_mins,
                     priority=priority,
-                    zone=auto_zone(lat, lon)
+                    zone=auto_zone(lat, lon),
+                    scheduled_date=date_str
                 ))
             except:
                 continue

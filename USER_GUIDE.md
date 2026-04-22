@@ -1,4 +1,4 @@
-# 📘 Hướng dẫn sử dụng LogisAgent V7
+# 📘 Hướng dẫn sử dụng LogisAgent V8.1 (Industrial)
 
 Chào mừng bạn đến với hệ thống Hỗ trợ Ra quyết định (Decision Support System - DSS) dành cho Trung tâm Logistics Orléans. Hệ thống này giúp bạn tối ưu hóa việc phân hành trình, quản lý đội xe và kiểm soát chi phí (TCO).
 
@@ -14,7 +14,10 @@ Trước khi chạy tối ưu hóa, bạn cần thiết lập các điều kiệ
    - **Économique (Tối ưu tiền)**: Gom đơn vào ít xe nhất, ưu tiên xe nhỏ nhất có thể.
    - **Équilibré (Cân bằng)**: Cấu hình mặc định, cân đối giữa chi phí và tải trọng.
    - **Social (Công bằng)**: Chia đều đơn hàng cho tất cả tài xế đang sẵn sàng.
-   - *Mẹo: Bạn có thể mở mục "Cấu hình Trade-offs" để tinh chỉnh thủ công các trọng số.*
+4. **Cấu hình Expert (🚀 Optimisation Expert)**:
+   - **Ensemble Mode (🤖)**: Bật chế độ đa luồng để AI chạy nhiều chiến lược cùng lúc.
+   - **Workers Concurrents**: Số lượng nhân xử lý song song (1-8).
+   - **Metaheuristic**: Lựa chọn thuật toán cấp cao (Tabu Search, Simulated Annealing) khi không dùng Ensemble.
 
 ### Bước 2: Nạp dữ liệu (Simuler hoặc Import)
 1. **Lựa chọn chế độ**: Ở đầu thanh bên, mục **"Importation Industrielle"** cho phép bạn chọn:
@@ -28,7 +31,7 @@ Nhấn nút **"🚀 Exécuter Solveur CVRPTW"**.
 - AI (Google OR-Tools) sẽ tính toán hàng triệu phương án để tìm ra lộ trình rẻ nhất và đúng giờ nhất dựa trên chiến lược bạn đã chọn.
 
 ### Bước 4: Phân tích kết quả
-Sau khi AI chạy xong, kết quả sẽ hiển thị qua 3 tab chính:
+Sau khi AI chạy xong, kết quả sẽ hiển thị qua 4 tab chính:
 
 #### 1. 🌐 Digital Twin (Bản đồ)
 - Hiển thị các cung đường di chuyển bằng đường vòng cung (Arc).
@@ -49,6 +52,11 @@ Sau khi AI chạy xong, kết quả sẽ hiển thị qua 3 tab chính:
 #### 3. 💶 Financial Audit (Kiểm toán TCO)
 - Bảng kê chi phí chi tiết từng xe: Tiền dầu, Tiền lương, Phí bảo dưỡng, Thuế CO2 và **Phí kích hoạt xe**.
 - Cột **Taux Chargement (%)**: Cho biết xe đó đã đầy bao nhiêu %. Nếu tỷ lệ này thấp (< 50%), hãy cân nhắc chuyển sang chiến lược "Économique".
+
+#### 4. 🧬 Solver Quality Audit (Kiểm toán Thuật toán)
+- Theo dõi chỉ số **Convergence (Hội tụ)** của các Workers.
+- **Giải thích con số "Coût" (Hàm mục tiêu)**: Đây là điểm số tổng hợp của Khoảng cách (mét) + Thời gian + Chi phí kích hoạt xe. Con số này **càng thấp càng tốt**. 
+- Hệ thống tự động chọn giải pháp có `Coût` thấp nhất để hiển thị.
 
 ---
 

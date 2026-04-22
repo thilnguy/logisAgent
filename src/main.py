@@ -18,13 +18,15 @@ from solver.distance_matrix import RoutingMatrix
 from solver.route_optimizer import EnterpriseRouteOptimizer
 from domain.traffic_agent import TrafficAgent
 
-st.set_page_config(page_title="LogisAgent V7: Digital Twin & Strategic DSS", layout="wide", page_icon="🚛")
+
+st.set_page_config(page_title="LogisAgent V8.2.0 : Optimiseur Industriel", layout="wide", page_icon="🚛")
 
 # Industrial Headers (Problem Solver Branding)
-st.title("🚛 LogisAgent V7: Digital Twin & Decision Support System")
+st.title("🚛 LogisAgent V8.2.0 : Pipeline de Tuning Industriel")
+
 st.markdown("""
-*Système d'Aide à la Décision (DSS) basé sur l'IA - Optimisation de la Supply Chain selon les normes industrielles (EU 561/2006). 
-Intègre les concepts de **Human-in-the-loop** & **Digital Twin** pour la gestion du TCO.*
+*Système d'Aide à la Décision (DSS) de classe industrielle. 
+Optimisation parallèle massive (Ensemble Optimization) & Résilience temps réel.*
 """)
 
 # 1. Initialize Mock DB / Repository
@@ -124,7 +126,7 @@ with st.sidebar.expander("🛠️ Paramètres Trade-offs (Avancé)"):
 st.sidebar.markdown("---")
 st.sidebar.subheader("🛡️ Résilience Opérationnelle")
 resilience_level = st.sidebar.select_slider(
-    "Niveau de Sécurité",
+    "Niveau de Sécurité (Marge Chauffeur)",
     options=["Risqué (Efficient)", "Standard (Prudent)", "Robuste (Haute Résilience)"],
     value="Standard (Prudent)",
     help="Risqué: 0% marge | Standard: 15% marge | Robuste: 30% marge s'adaptant au trafic."
@@ -140,8 +142,11 @@ solver_time = st.sidebar.slider(
     help="Plus de temps = meilleure convergence pour les gros volumes (>50 col)."
 )
 
-with st.sidebar.expander("🛠️ Stratégies Avancées (V7.2)"):
-    st.caption("Contrôle granulaire du pipeline OR-Tools")
+with st.sidebar.expander("🛠️ Stratégies Avancées (V8.0)", expanded=True):
+    st.caption("🚀 CONTRÔLE INDUSTRIEL")
+    
+    ensemble_mode = st.toggle("🤖 Ensemble (Multi-Strategy)", value=False, help="Exécution parallèle de plusieurs stratégies distinctes pour une exploration optimale de l'espace des solutions.")
+    
     fss_map = {
         "AUTOMATIC": "AUTOMATIC",
         "PARALLEL_CHEAPEST_INSERTION": "PARALLEL_CHEAPEST_INSERTION",
@@ -149,7 +154,6 @@ with st.sidebar.expander("🛠️ Stratégies Avancées (V7.2)"):
         "SAVINGS": "SAVINGS",
         "CHRISTOFIDES": "CHRISTOFIDES"
     }
-    fss_choice = st.selectbox("First Solution Strategy", list(fss_map.keys()), index=1)
     
     meta_map = {
         "AUTOMATIC": "AUTOMATIC",
@@ -157,13 +161,21 @@ with st.sidebar.expander("🛠️ Stratégies Avancées (V7.2)"):
         "TABU_SEARCH": "TABU_SEARCH",
         "SIMULATED_ANNEALING": "SIMULATED_ANNEALING"
     }
-    meta_choice = st.selectbox("Local Search Metaheuristic", list(meta_map.keys()), index=0)
-    
-    parallel_workers = st.number_input("Multi-start Workers (Seeds)", 1, 4, 1, help="Exécute plusieurs recherches en parallèle avec des seeds khác nhau.")
+
+    if not ensemble_mode:
+        fss_choice = st.selectbox("First Solution Strategy", list(fss_map.keys()), index=1)
+        meta_choice = st.selectbox("Local Search Metaheuristic", list(meta_map.keys()), index=0)
+    else:
+        st.info("Mode Orchestrator : Le système assigne automatiquement les meilleures combinaisons de stratégies à chaque thread.")
+        fss_choice = "AUTOMATIC"
+        meta_choice = "AUTOMATIC"
+        
+    parallel_workers = st.sidebar.slider("Workers Concurrents", 1, 8, 4 if ensemble_mode else 1, help="Nombre de threads CPU exécutés en parallèle.")
+    solution_limit = st.sidebar.slider("Limitation des Solutions", 100, 10000, 1000, step=100, help="Arrête la recherche locale une fois la limite atteinte.")
 
 # Data Generation Button (Only for simulation mode)
 if not import_mode:
-    generate_btn = st.sidebar.button("� Simuler Flux Entrant (WMS)")
+    generate_btn = st.sidebar.button("🚀 Simuler Flux Entrant (WMS)")
 else:
     generate_btn = False
 
@@ -201,9 +213,10 @@ for o in st.session_state.orders:
         "Lat": o.address.latitude,
         "Lon": o.address.longitude,
         "Weight": o.weight_kg,
+        "Date": o.scheduled_date,
         "Start": f"{o.time_window.start_minute//60:02d}:{o.time_window.start_minute%60:02d}",
         "End": f"{o.time_window.end_minute//60:02d}:{o.time_window.end_minute%60:02d}",
-        "Unloading (mins)": o.service_time_minutes,
+        "Déchargement (mins)": o.service_time_minutes,
         "Priority": o.priority,
         "Zone": o.zone
     })
@@ -215,7 +228,7 @@ edited_df = st.data_editor(df_editor, num_rows="dynamic", use_container_width=Tr
 # 3. Sync Back to session_state.orders (Refining the objects)
 if st.session_state.get("main_editor"):
     # Re-parse the edited dataframe to ensure solver uses fresh values
-    st.session_state.orders = repo.parse_dataframe(edited_df.rename(columns={"Lat": "Latitude", "Lon": "Longitude", "Unloading (mins)": "Unloading_mins"}))
+    st.session_state.orders = repo.parse_dataframe(edited_df.rename(columns={"Lat": "Latitude", "Lon": "Longitude", "Déchargement (mins)": "Unloading_mins", "Date": "Date"}))
 
 # 2. Inventory Agent Validation
 agent = InventoryAgent(stock_mock)
@@ -249,7 +262,9 @@ if st.button("🚀 Exécuter Solveur CVRPTW", type="primary"):
             safety_margin=safety_margin,
             first_solution_strategy=fss_choice,
             local_search_metaheuristic=meta_choice,
-            num_workers=parallel_workers
+            num_workers=parallel_workers,
+            ensemble_mode=ensemble_mode,
+            solution_limit=solution_limit
         )
         st.session_state.solve_duration = time.time() - start_time
         
@@ -258,6 +273,7 @@ if st.button("🚀 Exécuter Solveur CVRPTW", type="primary"):
         else:
             st.session_state.solution = solution['routes']
             st.session_state.dropped_orders = solution.get('dropped_orders', [])
+            st.session_state.worker_results = solution.get('worker_results', [])
             st.session_state.dist_matrix = dist_matrix
             st.session_state.time_matrix = time_matrix
             st.session_state.all_nodes = all_nodes
@@ -290,7 +306,12 @@ if "solution" in st.session_state:
     gantt_data = []
     pydeck_lines = []
     
-    base_time = datetime.strptime("00:00", "%H:%M")
+    # V3.2: Use Date from first order if available, otherwise today
+    plan_date_str = valid_orders[0].scheduled_date if valid_orders else datetime.now().strftime('%Y-%m-%d')
+    try:
+        base_time = datetime.strptime(plan_date_str, '%Y-%m-%d')
+    except:
+        base_time = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     
     for route in solution:
         truck = route['truck']
@@ -418,7 +439,12 @@ if "solution" in st.session_state:
     st.subheader("📈 Operation Dashboard")
     
     # Using Tabs for modularity and preventing clutter
-    tab1, tab2, tab3 = st.tabs(["🌐 Digital Twin (Map)", "📊 Timeline Gantt", "💶 Financial Audit (TCO)"])
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "🌐 Digital Twin (Map)", 
+        "📊 Timeline Gantt", 
+        "💶 Financial Audit (TCO)",
+        "🔬 Solver Quality Audit"
+    ])
 
     with tab1:
         # Build zone-colored markers for delivery points
@@ -476,7 +502,7 @@ if "solution" in st.session_state:
             color="Phase", 
             text="Location", 
             hover_name="Location", 
-            title="Dispatch Timeline (Driving vs Unloading)"
+            title="Timeline de Dispatch (Route vs Déchargement)"
         )
         fig.update_traces(textposition='inside', insidetextanchor='middle')
         fig.update_yaxes(autorange="reversed")
@@ -491,16 +517,16 @@ if "solution" in st.session_state:
         # Nested Grid for Finances
         colA, colB, colC, colD = st.columns([1.2, 1, 1, 1])
         with colA:
-            st.metric("Total Cost of Ownership", f"{total_tco:.2f} €", "Incl. Salaires, Gazole, Entretien, Taxe CO2")
+            st.metric("Coût Total de Possession (TCO)", f"{total_tco:.2f} €", "Incl. Salaires, Carburant, Entretien, Taxe CO2")
         with colB:
             robustness = st.session_state.get('solution_robustness', 100)
             st.metric("Indice de Fiabilité", f"{robustness}%", f"{resilience_level}")
         with colC:
             avg_load_factor = sum(float(d['Taux Chargement'].replace('%','')) for d in tco_truck_details) / len(tco_truck_details) if tco_truck_details else 0
-            st.metric("Taux de Remplissage", f"{avg_load_factor:.1f}%", "Moyen Fleet")
+            st.metric("Taux de Remplissage", f"{avg_load_factor:.1f}%", "Moyenne Flotte")
         with colD:
             solve_time = st.session_state.get('solve_duration', 0)
-            st.metric("Temps de Calcul", f"{solve_time:.3f} s", f"{len(st.session_state.orders)} stops")
+            st.metric("Temps de Calcul", f"{solve_time:.3f} s", f"{len(st.session_state.orders)} points")
 
         st.markdown("---")
         col1, col2 = st.columns([2, 1])
@@ -527,7 +553,15 @@ if "solution" in st.session_state:
         total_kms_all = sum(float(str(d['KM']).replace(',','')) for d in tco_truck_details)
         avg_load_factor = sum(float(d['Taux Chargement'].replace('%','')) for d in tco_truck_details) / len(tco_truck_details) if tco_truck_details else 0
         
-        report_data = f"""### RAPPORT DÉCISIONNEL - LOGISAGENT V7 (Industriel)
+        # New metrics requested by user
+        if st.session_state.get("orders"):
+            total_orders = len(st.session_state.orders)
+            min_weight = min(o.weight_kg for o in st.session_state.orders)
+            max_weight = max(o.weight_kg for o in st.session_state.orders)
+        else:
+            total_orders, min_weight, max_weight = 0, 0, 0
+
+        report_data = f"""### RAPPORT DÉCISIONNEL - LOGISAGENT V8.1 (Industriel)
 --------------------------------------
 **Hub**: Orléans (Saran/Ormes)  
 **Date**: {datetime.now().strftime('%d/%m/%Y %H:%M')}  
@@ -536,6 +570,8 @@ if "solution" in st.session_state:
 **Résilience**: {resilience_level} (Marge {safety_margin}x)
 
 #### 📊 RÉSULTATS CLÉS:
+- **Total Commandes**: {total_orders} colis
+- **Plage de Poids**: {min_weight}kg - {max_weight}kg
 - **Coût Total (TCO)**: {total_tco:,.2f} €
 - **Distance Totale**: {total_kms_all:.1f} km
 - **Indice de Fiabilité**: {st.session_state.get('solution_robustness', 'N/A')}%
@@ -550,12 +586,51 @@ if "solution" in st.session_state:
 ---
 *Généré par LogisAgent DSS - Digital Twin Engine*
 """
-        st.info("💡 Vous pouvez télécharger ce rapport au format Markdown/Texte pour l'inclure dans votre dossier de candidature.")
         st.download_button(
-            label="📩 Télécharger le Rapport Décisionnel (Simulation)",
+            label="📩 Télécharger Rapport Décisionnel (Format Industriel .md)",
             data=report_data,
-            file_name="rapport_logis_agent_v4.md",
+            file_name=f"Rapport_LogisAgent_V8_2_0_{datetime.now().strftime('%Y%m%d')}.md",
             mime="text/markdown",
-            key="download_report"
+            type="primary",
+            use_container_width=True
         )
+        
+        st.caption("✅ Rapport Markdown chuẩn V8.2.0 đã sẵn sàng. Bạn có thể mở bằng bất kỳ trình soạn thảo văn bản nào.")
 
+    with tab4:
+        st.markdown("### 🧬 Analyse de Convergence (Ensemble Mode) - v8.2.0")
+        if "worker_results" in st.session_state and st.session_state.worker_results:
+            import pandas as pd
+            df_audit = pd.DataFrame(st.session_state.worker_results)
+            
+            # Show Detailed Table
+            cols_to_show = ["strategy", "cost", "dist_cost", "fixed_cost", "penalty_cost", "span_cost"]
+            # Filter only existing columns to avoid errors if some workers failed/old data
+            existing_cols = [c for c in cols_to_show if c in df_audit.columns]
+            
+            st.dataframe(df_audit[existing_cols].rename(columns={
+                "strategy": "Stratégie", 
+                "cost": "Coût Total",
+                "dist_cost": "Coût Distance",
+                "fixed_cost": "Coût Fixe",
+                "penalty_cost": "Pénalités",
+                "span_cost": "Coût Span"
+            }), use_container_width=True)
+        
+            with st.expander("ℹ️ Comprendre le Coût (Formule Industrielle)"):
+                st.markdown("""
+                **Le Coût Total est une somme pondérée permettant d'arbitrer entre plusieurs objectifs :**
+                - 📏 **Distance** : Kilométrage total ajusté par le poids/capacité.
+                - 🚛 **Coût Fixe** : Frais d'activation de chaque camion (Configurable dans l'onglet Flotte).
+                - ❌ **Pénalités** : Coût virtuel élevé (ex: 2M pts) pour chaque commande non-livrée (Dropped) ou livraison prioritaire en retard.
+                - ⚖️ **Span** : Pénalité d'écart entre le camion le plus chargé et le moins chargé (pour équilibrer le travail).
+                
+                *Vous pouvez ajuster ces poids dans : `config/solver_params.json`*
+                """)
+                
+                df_workers = pd.DataFrame(st.session_state.worker_results)
+                st.success(f"Meilleure stratégie identifiée : **{df_workers.iloc[0]['strategy']}**")
+                
+                st.caption("Note: Le solveur industriel sélectionne automatiquement la solution avec le coût global minimum parmi toutes les configurations testées.")
+        else:
+            st.info("Lancez le solveur pour auditer les performances des stratégies parallèles.")

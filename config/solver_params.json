@@ -1,0 +1,17 @@
+{
+    "penalties": {
+        "priority_1_dropped": 2000000,
+        "priority_2_dropped": 500000,
+        "time_window_violation_per_min": 1000
+    },
+    "coefficients": {
+        "distance_meter_mult": 1,
+        "fixed_cost_multiplier": 100,
+        "global_span_default": 100,
+        "span_cost_default": 300
+    },
+    "scaling": {
+        "truck_capacity_threshold": 1500,
+        "max_capacity_multiplier": 3
+    }
+}

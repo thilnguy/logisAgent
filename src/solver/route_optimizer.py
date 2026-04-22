@@ -4,6 +4,8 @@ from ortools.constraint_solver import pywrapcp
 from typing import List
 import concurrent.futures
 import time
+import json
+import os
 
 class EnterpriseRouteOptimizer:
     def __init__(self, all_nodes: list, trucks: list, dist_matrix: list, time_matrix: list):
@@ -19,6 +21,9 @@ class EnterpriseRouteOptimizer:
         self.num_nodes = len(all_nodes)
         self.num_vehicles = len(trucks)
         
+        # Load Solver Parameters
+        self.config = self._load_config()
+        
         # Build starts and ends arrays for multi-depot
         self.starts = []
         self.ends = []
@@ -29,6 +34,16 @@ class EnterpriseRouteOptimizer:
             self.ends.append(end_idx)
         
         self.num_depots = len([n for n in self.nodes if hasattr(n, 'depot_id')])
+
+    def _load_config(self):
+        config_path = "config/solver_params.json"
+        if os.path.exists(config_path):
+            with open(config_path, "r") as f:
+                return json.load(f)
+        return {
+            "penalties": {"priority_1_dropped": 2000000, "priority_2_dropped": 500000},
+            "coefficients": {"distance_meter_mult": 1, "fixed_cost_multiplier": 100, "global_span_default": 100, "span_cost_default": 300}
+        }
 
     def solve(self, 
               time_limit_sec=10, 
@@ -97,7 +112,11 @@ class EnterpriseRouteOptimizer:
                     if result:
                         worker_results.append({
                             "strategy": f"{result['fss']} + {result['meta']}",
-                            "cost": result['cost']
+                            "cost": result['cost'],
+                            "dist_cost": result['breakdown']['distance'],
+                            "fixed_cost": result['breakdown']['fixed'],
+                            "penalty_cost": result['breakdown']['penalty'],
+                            "span_cost": result['breakdown']['span']
                         })
                         if result['cost'] < min_cost:
                             min_cost = result['cost']
@@ -170,8 +189,10 @@ class EnterpriseRouteOptimizer:
             prio = getattr(node, 'priority', 2)
             weight = getattr(node, 'weight_kg', 0)
             
-            # Dynamic penalty: high importance for priority 1, scaled by payload
-            base_p = 2000000 if prio == 1 else 500000
+            # Dynamic penalty from config
+            p1_penalty = self.config["penalties"]["priority_1_dropped"]
+            p2_penalty = self.config["penalties"]["priority_2_dropped"]
+            base_p = p1_penalty if prio == 1 else p2_penalty
             adj_p = int(base_p * (1 + (weight / 5000))) 
             routing.AddDisjunction([idx], adj_p)
             
@@ -219,7 +240,52 @@ class EnterpriseRouteOptimizer:
         sol = routing.SolveWithParameters(search_params)
         if sol:
             formatted = self._format_solution(manager, routing, sol, time_dim)
-            return {'cost': sol.ObjectiveValue(), 'data': formatted, 'fss': fss_name, 'meta': meta_name}
+            
+            # Calculate breakdown
+            # Note: This is an estimation based on the solver state
+            dist_cost = 0
+            fixed_cost = 0
+            for vid in range(self.num_vehicles):
+                if routing.IsVehicleUsed(sol, vid):
+                    fixed_cost += int(self.trucks[vid].fixed_cost_euro * self.config["coefficients"]["fixed_cost_multiplier"])
+            
+            # Distance is the Arc costs part
+            # We subtract fixed and penalties from total objective to get distance + span
+            total_obj = sol.ObjectiveValue()
+            
+            penalty_cost = 0
+            for i in range(self.num_depots, self.num_nodes):
+                if sol.Value(routing.NextVar(manager.NodeToIndex(i))) == manager.NodeToIndex(i):
+                    # Dropped
+                    node = self.nodes[i]
+                    prio = getattr(node, 'priority', 2)
+                    penalty_cost += self.config["penalties"]["priority_1_dropped"] if prio == 1 else self.config["penalties"]["priority_2_dropped"]
+
+            # Estimation of span cost part (very rough)
+            span_cost_est = total_obj - fixed_cost - penalty_cost - sum(r.get('dist_meters', 0) for r in formatted['routes']) # problematic
+            
+            # Actually, let's just calculate distance manually
+            total_dist_score = 0
+            for r in formatted['routes']:
+                truck = r['truck']
+                mult = min(3, max(1, int(truck.capacity_kg / self.config["scaling"].get("truck_capacity_threshold", 1500))))
+                # Calculate meters from route segments
+                route_nodes = r['route']
+                d_m = 0
+                for k in range(len(route_nodes)-1):
+                    d_m += self.dist_matrix[route_nodes[k]['node_index']][route_nodes[k+1]['node_index']]
+                total_dist_score += d_m * mult
+            
+            span_cost = total_obj - fixed_cost - penalty_cost - total_dist_score
+
+            breakdown = {
+                "distance": total_dist_score,
+                "fixed": fixed_cost,
+                "penalty": penalty_cost,
+                "span": max(0, span_cost)
+            }
+            
+            return {'cost': total_obj, 'data': formatted, 'fss': fss_name, 'meta': meta_name, 'breakdown': breakdown}
         return None
 
 

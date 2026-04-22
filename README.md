@@ -1,24 +1,29 @@
-# LogisAgent V7: High-Performance Logistics Digital Twin & Strategic DSS
+# LogisAgent V8.1: Industrial-Grade Logistics Digital Twin & Optimizer
 
 **Optimisation Industrielle | Aide à la Décision (DSS) | Résilience Opérationnelle**
 
-LogisAgent V7 is a production-ready **Digital Twin** designed to bridge the gap between complex optimization algorithms and operational business value. Built for the **Orléans / Pôle 45** industrial landscape, it solves the Capacitated Vehicle Routing Problem with Time Windows (CVRPTW) while strictly adhering to French regulations and managing real-world uncertainty.
+LogisAgent V8.1 is an industrial-grade **Digital Twin** and **Optimization Orchestrator** designed to solve complex supply chain challenges. It facilitating **Lean Supply Chain** management and **Continuous Improvement**, helping organizations minimize waste and elevate performance through massive parallel computing.
 
 ## 🚀 Key Innovation Pillars
 
 ### 📊 1. Operational Resilience (Risk-Awareness)
 - **Predictive Reliability**: Integrates a `Robustness Index` that grades planning reliability based on exposure to traffic peaks.
-- **Dynamic Slack Management**: Automatically injects "Time Buffers" during Orléans rush-hour (A10 Nord/Sud) to prevent cascading delays.
+- **Muda Reduction (Lean)**: Minimizes waste by automatically injecting "Time Buffers" during Orléans rush-hour (A10 Nord/Sud), turning unpredictable waiting times into planned resilience.
 - **Predictive Modeling**: Simulates traffic impact on the TCO (Total Cost of Ownership) before dispatching.
 
 ### ⚡ 2. Industrial Scalability (Performance)
-- **High-Density Solver**: Optimized with **Google OR-Tools** to handle 100+ delivery points in sub-second computation times.
-- **Synthetic Data Fabric**: Integrated "Real-World Business" generator to simulate enterprise-scale data in the Orléans periphery.
+- **Industrial Ensemble Mode**: Massive parallel execution of multiple OR-Tools metaheuristic strategies (Guided Local Search, Tabu Search, Simulated Annealing) to guarantee optimal convergence.
+- **Expert Tuning Pipeline**: Granular control over first-solution strategies, neighborhood operators, and worker distribution.
 - **Fleet Auto-scaling**: Dynamic asset management capable of managing massive influxes of orders through unit-controlled fleet cloning.
 
 ### 💶 3. Full Financial Auditing (Digital Twin)
 - **Granular TCO**: Detailed breakdown of Gazole, Wages, Maintenance, and **CO2 Taxes**.
 - **Human-in-the-loop**: Strategic axial control (Economic, Balanced, Social) to balance cost efficiency with driver equity.
+- **Solver Quality Audit**: Real-time benchmarking of parallel worker performance, exposing objective functions (Coût) for deep operational transparency.
+
+### 🔄 4. Continuous Improvement (Amélioration Continue)
+- **PDCA Engine**: The Digital Twin generates high-fidelity performance data that serves as the "Check" phase in **PDCA (Plan-Do-Check-Act)** loops.
+- **Kaizen-Ready Analytics**: Enables iterative optimization of fleet routes and schedules by comparing planned vs. simulated outcomes to constantly elevate business efficiency.
 
 ## 🛠️ Tech Stack
 

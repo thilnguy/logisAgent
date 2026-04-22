@@ -1,4 +1,4 @@
-# 🇫🇷 Guide Utilisateur LogisAgent V7
+# 🇫🇷 Guide Utilisateur LogisAgent V8.1 (Industriel)
 
 Bienvenue dans le Système d'Aide à la Décision (DSS) de LogisAgent pour le hub d'Orléans. Ce système vous permet d'optimiser vos tournées, de gérer votre flotte et de contrôler vos coûts opérationnels (TCO).
 
@@ -6,15 +6,18 @@ Bienvenue dans le Système d'Aide à la Décision (DSS) de LogisAgent pour le hu
 
 ## 🚀 Processus en 4 étapes
 
-### Étape 1 : Configuration (Thanh bên trái)
+### Étape 1 : Configuration (Barre latérale)
 Avant de lancer l'optimisation, configurez vos paramètres :
-1. **Volume de commandes** : Choisissez le nombre de commandes à simuler (5 - 15).
+1. **Volume de commandes** : Choisissez le nombre de commandes à simuler (5 - 100).
 2. **Live API (Bison Futé)** : Surveillez le trafic en temps réel. Le système ajuste les temps de trajet si l'axe A10 Nord est congestionné.
 3. **Stratégie Décisionnelle (🎯 Stratégie)** :
    - **Économique** : Maximise le groupage, utilise le moins de véhicules possibles.
    - **Équilibré** : Configuration par défaut, compromis coût/charge.
    - **Social** : Répartit équitablement le travail entre les chauffeurs.
-   - *Astuce : Ouvrez "Cấu hình Trade-offs" pour un réglage manuel des poids.*
+4. **Configuration Expert (🚀 Optimisation Expert)** :
+   - **Ensemble Mode (🤖)** : Active le parallélisme pour tester plusieurs stratégies simultanément.
+   - **Workers Concurrents** : Nombre de cœurs CPU alloués (1-8).
+   - **Métaheuristique** : Choix de l'algorithme (Guided Local Search, Tabu Search) en mode mono-stratégie.
 
 ### Étape 2 : Chargement des données (Simulation ou Import)
 1. **Choix du mode** : En haut de la barre latérale, la section **"Importation Industrielle"** vous permet de choisir :
@@ -28,7 +31,7 @@ Cliquez sur **"🚀 Exécuter Solveur CVRPTW"**.
 - L'IA (Google OR-Tools) calcule la meilleure solution respectant toutes les contraintes opérationnelles.
 
 ### Étape 4 : Analyse des résultats
-Les résultats sont répartis en 3 onglets :
+Les résultats sont répartis en 4 onglets :
 
 #### 1. 🌐 Digital Twin (Carte)
 - Visualisez les tournées avec des arcs directionnels.
@@ -37,7 +40,6 @@ Les résultats sont répartis en 3 onglets :
   - 🔵 Bleu : Zone NORD.
   - 🟢 Vert : Zone SUD.
   - 🟠 Orange : Centre-ville (CITY).
-- Permet de vérifier que chaque véhicule respecte son territoire.
 
 #### 2. 📊 Timeline Gantt (Planning)
 - Planning détaillé par chauffeur.
@@ -50,11 +52,16 @@ Les résultats sont répartis en 3 onglets :
 - Coûts détaillés par véhicule : Carburant, Salaire, Maintenance, CO2 et **Frais d'activation**.
 - Colonne **Taux Chargement (%)** : Indique l'optimisation du remplissage. Si trop bas (< 50%), passez en stratégie "Économique".
 
+#### 4. 🧬 Solver Quality Audit (Audit Qualité)
+- Visualisez la **Convergence** des différents Workers en temps réel.
+- **Explication du "Coût" (Objectif)** : C'est un score combinant Distance (mètres), Temps et Frais d'activation. **Plus le score est bas, meilleure est la solution.**
+- Le système sélectionne automatiquement le Worker ayant trouvé le "Coût" le plus faible.
+
 ---
 
 ## ⚠️ Notes Importantes
 
 - **Commandes Non-Livrées** : Si un avertissement apparaît, certaines commandes n'ont pu être planifiées (fenêtre horaire trop courte ou poids excessif). Ajoutez des camions ou élargissez les fenêtres.
-- **Zones Géographiques** : Les camions de 12t et 44t sont restreints par zone pour maximiser l'efficacité opérationnelle chuyên môn hóa.
+- **Zones Géographiques** : Les camions de 12t et 44t sont restreints par zone pour maximiser l'efficacité opérationnelle.
 
 ---
