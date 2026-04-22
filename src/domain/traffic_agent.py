@@ -4,7 +4,7 @@ from loguru import logger
 
 class TrafficAgent:
     """
-    V3 Production Architecture:
+    Industrial Edition Production Architecture:
     Replaces purely manual 'What-If' scenarios with simulated Live Webhooks.
     In a real environment, this pings TomTom API or Bison Futé to retrieve GeoJSON congestion heatmaps.
     """

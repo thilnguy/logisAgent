@@ -19,10 +19,10 @@ from solver.route_optimizer import EnterpriseRouteOptimizer
 from domain.traffic_agent import TrafficAgent
 
 
-st.set_page_config(page_title="LogisAgent V8.2.0 : Optimiseur Industriel", layout="wide", page_icon="🚛")
+st.set_page_config(page_title="LogisAgent: Industrial Solver", layout="wide", page_icon="🚛")
 
 # Industrial Headers (Problem Solver Branding)
-st.title("🚛 LogisAgent V8.2.0 : Pipeline de Tuning Industriel")
+st.title("🚛 LogisAgent: Industrial Solver")
 
 st.markdown("""
 *Système d'Aide à la Décision (DSS) de classe industrielle. 
@@ -75,7 +75,7 @@ base_trucks = [
     Truck(truck_id="T3-HGV", type_name="44t Artenay", capacity_kg=25000, start_depot_id="D2", end_depot_id="D2", co2_emission_rate_g_per_km=950.0, wage_per_hour_euro=30.0, fixed_cost_euro=120.0, allowed_zones=["NORD"])
 ]
 
-# V6: Auto-scale fleet for Stress Testing
+# Industrial Edition: Auto-scale fleet for Stress Testing
 if num_orders > 15:
     trucks = []
     multiplier = (num_orders // 10) + 1
@@ -142,7 +142,7 @@ solver_time = st.sidebar.slider(
     help="Plus de temps = meilleure convergence pour les gros volumes (>50 col)."
 )
 
-with st.sidebar.expander("🛠️ Stratégies Avancées (V8.0)", expanded=True):
+with st.sidebar.expander("🛠️ Stratégies Avancées (Industrial Edition)", expanded=True):
     st.caption("🚀 CONTRÔLE INDUSTRIEL")
     
     ensemble_mode = st.toggle("🤖 Ensemble (Multi-Strategy)", value=False, help="Exécution parallèle de plusieurs stratégies distinctes pour une exploration optimale de l'espace des solutions.")
@@ -284,7 +284,7 @@ if "solution" in st.session_state:
     dist_matrix = st.session_state.dist_matrix
     all_nodes = st.session_state.all_nodes
     
-    # V4 Phase 10: Display dropped orders warning
+    # Industrial Edition Component: Display dropped orders warning
     dropped = st.session_state.get('dropped_orders', [])
     if dropped:
         st.warning(f"⚠️ **{len(dropped)} commande(s) non-livrée(s)** (reportée(s) au lendemain)")
@@ -306,7 +306,7 @@ if "solution" in st.session_state:
     gantt_data = []
     pydeck_lines = []
     
-    # V3.2: Use Date from first order if available, otherwise today
+    # Industrial Edition: Use Date from first order if available, otherwise today
     plan_date_str = valid_orders[0].scheduled_date if valid_orders else datetime.now().strftime('%Y-%m-%d')
     try:
         base_time = datetime.strptime(plan_date_str, '%Y-%m-%d')
@@ -318,7 +318,7 @@ if "solution" in st.session_state:
         distance_m = 0
         node_seq = route['route']
         
-        # V6/7: Dynamic Color Palette for multi-truck visualization
+        # Industrial Edition/7: Dynamic Color Palette for multi-truck visualization
         palette = [
             [0, 255, 128],   # Spring Green
             [0, 128, 255],   # Azure
@@ -353,7 +353,7 @@ if "solution" in st.session_state:
                 "truck": truck.truck_id
             })
             
-            # Precise V3.1 Logic: Distinguish between Driving and Waiting
+            # Precise Industrial Edition Logic: Distinguish between Driving and Waiting
             is_depot = n_curr['node_index'] < len(depots)
             node_obj = all_nodes[n_curr['node_index']]
             service_mins = getattr(node_obj, 'service_time_minutes', 0) if not is_depot else 0
@@ -392,7 +392,7 @@ if "solution" in st.session_state:
                     Phase="Attente (Time Window)", Location=f"Patienter à: {next_name}"
                 ))
 
-        # V4 Phase 9: Render mandatory driver break on Gantt
+        # Industrial Edition Component: Render mandatory driver break on Gantt
         break_info = route.get('break_info')
         if break_info:
             break_start = base_time + timedelta(minutes=break_info['start_min'])
@@ -561,7 +561,7 @@ if "solution" in st.session_state:
         else:
             total_orders, min_weight, max_weight = 0, 0, 0
 
-        report_data = f"""### RAPPORT DÉCISIONNEL - LOGISAGENT V8.1 (Industriel)
+        report_data = f"""### RAPPORT DÉCISIONNEL - LOGISAGENT Industrial Edition (Industriel)
 --------------------------------------
 **Hub**: Orléans (Saran/Ormes)  
 **Date**: {datetime.now().strftime('%d/%m/%Y %H:%M')}  
@@ -589,16 +589,16 @@ if "solution" in st.session_state:
         st.download_button(
             label="📩 Télécharger Rapport Décisionnel (Format Industriel .md)",
             data=report_data,
-            file_name=f"Rapport_LogisAgent_V8_2_0_{datetime.now().strftime('%Y%m%d')}.md",
+            file_name=f"Rapport_LogisAgent_Industrial Edition_2_0_{datetime.now().strftime('%Y%m%d')}.md",
             mime="text/markdown",
             type="primary",
             use_container_width=True
         )
         
-        st.caption("✅ Rapport Markdown chuẩn V8.2.0 đã sẵn sàng. Bạn có thể mở bằng bất kỳ trình soạn thảo văn bản nào.")
+        st.caption("✅ Rapport Markdown chuẩn Industrial Edition đã sẵn sàng. Bạn có thể mở bằng bất kỳ trình soạn thảo văn bản nào.")
 
     with tab4:
-        st.markdown("### 🧬 Analyse de Convergence (Ensemble Mode) - v8.2.0")
+        st.markdown("### 🧬 Analyse de Convergence (Ensemble Mode) - Industrial Edition")
         if "worker_results" in st.session_state and st.session_state.worker_results:
             import pandas as pd
             df_audit = pd.DataFrame(st.session_state.worker_results)

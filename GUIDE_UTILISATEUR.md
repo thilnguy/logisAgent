@@ -1,4 +1,4 @@
-# 🇫🇷 Guide Utilisateur LogisAgent V8.1 (Industriel)
+# 🇫🇷 Guide Utilisateur LogisAgent: Industrial Solver (Industriel)
 
 Bienvenue dans le Système d'Aide à la Décision (DSS) de LogisAgent pour le hub d'Orléans. Ce système vous permet d'optimiser vos tournées, de gérer votre flotte et de contrôler vos coûts opérationnels (TCO).
 

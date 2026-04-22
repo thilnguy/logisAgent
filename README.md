@@ -1,8 +1,8 @@
-# LogisAgent V8.1: Industrial-Grade Logistics Digital Twin & Optimizer
+# LogisAgent: Industrial Solver
 
 **Optimisation Industrielle | Aide à la Décision (DSS) | Résilience Opérationnelle**
 
-LogisAgent V8.1 is an industrial-grade **Digital Twin** and **Optimization Orchestrator** designed to solve complex supply chain challenges. It facilitating **Lean Supply Chain** management and **Continuous Improvement**, helping organizations minimize waste and elevate performance through massive parallel computing.
+LogisAgent: Industrial Solver is an industrial-grade **Digital Twin** and **Optimization Orchestrator** designed to solve complex supply chain challenges. It facilitating **Lean Supply Chain** management and **Continuous Improvement**, helping organizations minimize waste and elevate performance through massive parallel computing.
 
 ## 🚀 Key Innovation Pillars
 

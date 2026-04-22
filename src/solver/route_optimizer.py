@@ -56,7 +56,7 @@ class EnterpriseRouteOptimizer:
               ensemble_mode=False,
               solution_limit=1000):
         """
-        AI Solver with Architecture V8.0
+        AI Solver with Architecture Industrial Edition
         - Parallel Ensemble Orchestrator (Concurrent Futures)
         - Adaptive Priority Scaling
         - Robust Neighborhood Operators

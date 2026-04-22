@@ -1,7 +1,7 @@
-# LogisAgent V2.0: Business Case & ROI
+# LogisAgent: Industrial Solver: Business Case & ROI
 
 ## Overview
-This **Decision Support System (DSS)** transforms a complex Operations Research problem into an accessible management dashboard. Moving beyond a standard "CVRP script", LogisAgent V2.0 integrates constraints fundamental to urban logistics: **Time Windows**, **Multi-Depots**, and **Heterogeneous fleets**.
+This **Decision Support System (DSS)** transforms a complex Operations Research problem into an accessible management dashboard. Moving beyond a standard "CVRP script", LogisAgent: Industrial Solver integrates constraints fundamental to urban logistics: **Time Windows**, **Multi-Depots**, and **Heterogeneous fleets**.
 
 ## 1. The Value Proposition (ROI)
 LogisAgent doesn't just cut kilometers; it computes the **Total Cost of Ownership (TCO)** per route. By calculating:
