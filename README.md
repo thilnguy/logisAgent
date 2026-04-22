@@ -1,8 +1,8 @@
-# LogisAgent: Industrial Solver
+# LogisAgent: Solveur Industriel
 
 **Optimisation Industrielle | Aide à la Décision (DSS) | Résilience Opérationnelle**
 
-LogisAgent: Industrial Solver is an industrial-grade **Digital Twin** and **Optimization Orchestrator** designed to solve complex supply chain challenges. It facilitating **Lean Supply Chain** management and **Continuous Improvement**, helping organizations minimize waste and elevate performance through massive parallel computing.
+LogisAgent: Solveur Industriel is an industrial-grade **Digital Twin** and **Optimization Orchestrator** designed to solve complex supply chain challenges. It facilitating **Lean Supply Chain** management and **Continuous Improvement**, helping organizations minimize waste and elevate performance through massive parallel computing.
 
 ## 🚀 Key Innovation Pillars
 
@@ -16,7 +16,7 @@ LogisAgent: Industrial Solver is an industrial-grade **Digital Twin** and **Opti
 - **Expert Tuning Pipeline**: Granular control over first-solution strategies, neighborhood operators, and worker distribution.
 - **Fleet Auto-scaling**: Dynamic asset management capable of managing massive influxes of orders through unit-controlled fleet cloning.
 
-### 💶 3. Full Financial Auditing (Digital Twin)
+- **In-depth Operational Auditing**: Interactive Digital Twin allowing users to isolate specific vehicle trajectories and audit visit data via enriched tooltips (Truck ID, Zone, Customer Name).
 - **Granular TCO**: Detailed breakdown of Gazole, Wages, Maintenance, and **CO2 Taxes**.
 - **Human-in-the-loop**: Strategic axial control (Economic, Balanced, Social) to balance cost efficiency with driver equity.
 - **Solver Quality Audit**: Real-time benchmarking of parallel worker performance, exposing objective functions (Coût) for deep operational transparency.

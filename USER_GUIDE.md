@@ -1,4 +1,4 @@
-# 📘 Hướng dẫn sử dụng LogisAgent: Industrial Solver (Industrial)
+# 📘 Hướng dẫn sử dụng LogisAgent: Solveur Industriel (Giao diện Công nghiệp)
 
 Chào mừng bạn đến với hệ thống Hỗ trợ Ra quyết định (Decision Support System - DSS) dành cho Trung tâm Logistics Orléans. Hệ thống này giúp bạn tối ưu hóa việc phân hành trình, quản lý đội xe và kiểm soát chi phí (TCO).
 
@@ -39,7 +39,11 @@ Sau khi AI chạy xong, kết quả sẽ hiển thị qua 4 tab chính:
   - 🔴 Đỏ: Kho hàng (Depot).
   - 🔵 Xanh dương: Vùng phía Bắc (NORTH).
   - 🟢 Xanh lá: Vùng phía Nam (SOUTH).
-  - 🟠 Cam: Nội đô Orléans (CITY).
+  - 🟠 Orange : Centre-ville (CITY).
+- **Bộ lọc Quỹ đạo (Audit):**
+  - Sử dụng checkbox **"Hiển thị toàn bộ đội xe"** để xem tổng thể.
+  - Bỏ chọn để mở ô **"Audit xe cụ thể"**, cho phép cô lập lộ trình của một hoặc vài xe để kiểm soát chi tiết.
+  - **Tooltip thông minh:** Di chuột vào đường kẻ hoặc điểm giao để xem mã xe (**Vehicle ID**) đang thực hiện nhiệm vụ.
 - Giúp bạn xác minh nhanh xe có chạy đúng vùng được giao hay không.
 
 #### 2. 📊 Timeline Gantt (Lịch trình)

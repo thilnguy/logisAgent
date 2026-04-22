@@ -1,4 +1,4 @@
-# 🇫🇷 Guide Utilisateur LogisAgent: Industrial Solver (Industriel)
+# 🇫🇷 Guide Utilisateur LogisAgent: Solveur Industriel (Industriel)
 
 Bienvenue dans le Système d'Aide à la Décision (DSS) de LogisAgent pour le hub d'Orléans. Ce système vous permet d'optimiser vos tournées, de gérer votre flotte et de contrôler vos coûts opérationnels (TCO).
 
@@ -40,6 +40,10 @@ Les résultats sont répartis en 4 onglets :
   - 🔵 Bleu : Zone NORD.
   - 🟢 Vert : Zone SUD.
   - 🟠 Orange : Centre-ville (CITY).
+- **Filtrage de Trajectoires (Audit) :**
+  - Utilisez la case **"Hiển thị toàn bộ đội xe (Vue Globale)"** pour une vue d'ensemble.
+  - Décochez pour activer l'audit par véhicule. Sélectionnez un ou plusieurs camions để cô lập quỹ đạo của họ trên bản đồ.
+  - **Info-bulles (Tooltips) :** Survolez un arc hoặc un point de livraison pour voir quel **Vehicle ID** est assigné à ce trajet.
 
 #### 2. 📊 Timeline Gantt (Planning)
 - Planning détaillé par chauffeur.

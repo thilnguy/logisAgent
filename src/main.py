@@ -19,10 +19,10 @@ from solver.route_optimizer import EnterpriseRouteOptimizer
 from domain.traffic_agent import TrafficAgent
 
 
-st.set_page_config(page_title="LogisAgent: Industrial Solver", layout="wide", page_icon="🚛")
+st.set_page_config(page_title="LogisAgent: Solveur Industriel", layout="wide", page_icon="🚛")
 
 # Industrial Headers (Problem Solver Branding)
-st.title("🚛 LogisAgent: Industrial Solver")
+st.title("🚛 LogisAgent: Solveur Industriel")
 
 st.markdown("""
 *Système d'Aide à la Décision (DSS) de classe industrielle. 
@@ -142,7 +142,7 @@ solver_time = st.sidebar.slider(
     help="Plus de temps = meilleure convergence pour les gros volumes (>50 col)."
 )
 
-with st.sidebar.expander("🛠️ Stratégies Avancées (Industrial Edition)", expanded=True):
+with st.sidebar.expander("🛠️ Stratégies Avancées (Édition Industrielle)", expanded=True):
     st.caption("🚀 CONTRÔLE INDUSTRIEL")
     
     ensemble_mode = st.toggle("🤖 Ensemble (Multi-Strategy)", value=False, help="Exécution parallèle de plusieurs stratégies distinctes pour une exploration optimale de l'espace des solutions.")
@@ -163,8 +163,8 @@ with st.sidebar.expander("🛠️ Stratégies Avancées (Industrial Edition)", e
     }
 
     if not ensemble_mode:
-        fss_choice = st.selectbox("First Solution Strategy", list(fss_map.keys()), index=1)
-        meta_choice = st.selectbox("Local Search Metaheuristic", list(meta_map.keys()), index=0)
+        fss_choice = st.selectbox("Stratégie de Première Solution", list(fss_map.keys()), index=1)
+        meta_choice = st.selectbox("Métaheuristique de Recherche Locale", list(meta_map.keys()), index=0)
     else:
         st.info("Mode Orchestrator : Le système assigne automatiquement les meilleures combinaisons de stratégies à chaque thread.")
         fss_choice = "AUTOMATIC"
@@ -201,7 +201,7 @@ if not st.session_state.orders:
     st.stop()
 
 st.markdown("---")
-st.subheader("📋 WMS Data Feed & Éditeur Interactif")
+st.subheader("📋 Flux de données WMS & Éditeur Interactif")
 st.caption("Données issues du WMS ou Importées. Vous pouvez modifier les valeurs directement dans le tableau.")
 
 # 1. Prepare Data for Editor
@@ -216,7 +216,7 @@ for o in st.session_state.orders:
         "Date": o.scheduled_date,
         "Start": f"{o.time_window.start_minute//60:02d}:{o.time_window.start_minute%60:02d}",
         "End": f"{o.time_window.end_minute//60:02d}:{o.time_window.end_minute%60:02d}",
-        "Déchargement (mins)": o.service_time_minutes,
+        "Déchargement (min)": o.service_time_minutes,
         "Priority": o.priority,
         "Zone": o.zone
     })
@@ -228,7 +228,7 @@ edited_df = st.data_editor(df_editor, num_rows="dynamic", use_container_width=Tr
 # 3. Sync Back to session_state.orders (Refining the objects)
 if st.session_state.get("main_editor"):
     # Re-parse the edited dataframe to ensure solver uses fresh values
-    st.session_state.orders = repo.parse_dataframe(edited_df.rename(columns={"Lat": "Latitude", "Lon": "Longitude", "Déchargement (mins)": "Unloading_mins", "Date": "Date"}))
+    st.session_state.orders = repo.parse_dataframe(edited_df.rename(columns={"Lat": "Latitude", "Lon": "Longitude", "Déchargement (min)": "Unloading_mins", "Date": "Date"}))
 
 # 2. Inventory Agent Validation
 agent = InventoryAgent(stock_mock)
@@ -240,7 +240,7 @@ if invalid_orders:
         st.write(f"- {o.order_id} ({o.address.name})")
 
 st.markdown("---")
-st.subheader("🚛 Planification (Routing & Time Windows)")
+st.subheader("🚛 Planification (Routage & Fenêtres Horaires)")
 
 if st.button("🚀 Exécuter Solveur CVRPTW", type="primary"):
     with st.spinner("Modélisation des matrices Temps/Distance et recherche d'optimal (OR-Tools)..."):
@@ -305,6 +305,7 @@ if "solution" in st.session_state:
     tco_truck_details = []
     gantt_data = []
     pydeck_lines = []
+    node_to_truck = {} # Mapping for map tooltips
     
     # Industrial Edition: Use Date from first order if available, otherwise today
     plan_date_str = valid_orders[0].scheduled_date if valid_orders else datetime.now().strftime('%Y-%m-%d')
@@ -346,11 +347,16 @@ if "solution" in st.session_state:
             lat1, lon1 = (curr_coords.address.latitude, curr_coords.address.longitude) if hasattr(curr_coords, 'address') else (curr_coords.latitude, curr_coords.longitude)
             lat2, lon2 = (next_coords.address.latitude, next_coords.address.longitude) if hasattr(next_coords, 'address') else (next_coords.latitude, next_coords.longitude)
             
+            # Mapping for scatter points tooltips
+            node_to_truck[n_curr['node_index']] = truck.truck_id
+            node_to_truck[n_next['node_index']] = truck.truck_id
+
             pydeck_lines.append({
                 "start": [lon1, lat1],
                 "end":   [lon2, lat2],
                 "color": color,
-                "truck": truck.truck_id
+                "truck": truck.truck_id,
+                "name": f"Trajet Véhicule: {truck.truck_id}"
             })
             
             # Precise Industrial Edition Logic: Distinguish between Driving and Waiting
@@ -436,40 +442,58 @@ if "solution" in st.session_state:
         
     # --- UI RENDERING (GRID & TABS) ---
     st.markdown("---")
-    st.subheader("📈 Operation Dashboard")
+    st.subheader("📈 Tableau de Bord Opérationnel")
     
     # Using Tabs for modularity and preventing clutter
     tab1, tab2, tab3, tab4 = st.tabs([
-        "🌐 Digital Twin (Map)", 
+        "🌐 Twin Numérique (Carte)", 
         "📊 Timeline Gantt", 
-        "💶 Financial Audit (TCO)",
-        "🔬 Solver Quality Audit"
+        "💶 Audit Financier (TCO)",
+        "🔬 Audit de Performance (Solver)"
     ])
 
     with tab1:
+        # Industrial Filter: Vehicle Trajectory Control
+        available_trucks = sorted(list(set(line['truck'] for line in pydeck_lines)))
+        
+        show_all = st.checkbox("🚛 Afficher toute la flotte (Vue Globale)", value=True, help="Décochez pour filtrer des véhicules spécifiques et épurer l'interface.")
+        
+        if show_all:
+            selected_trucks = available_trucks
+        else:
+            selected_trucks = st.multiselect(
+                "🚚 Audit de véhicules spécifiques",
+                options=available_trucks,
+                default=[],
+                help="Sélectionnez les véhicules pour isoler leurs trajectoires sur la carte."
+            )
+        
+        filtered_lines = [line for line in pydeck_lines if line['truck'] in selected_trucks]
+
         # Build zone-colored markers for delivery points
         zone_colors = {"NORD": [0, 120, 255], "SUD": [0, 200, 100], "CENTRE-VILLE": [255, 160, 0]}
         zone_markers = []
-        for node in all_nodes:
+        for i, node in enumerate(all_nodes):
+            visiting_truck = node_to_truck.get(i, "N/A")
             if hasattr(node, 'zone') and node.zone:
                 zone_markers.append({
                     "position": [node.address.longitude, node.address.latitude],
                     "color": zone_colors.get(node.zone, [180, 180, 180]),
-                    "name": f"{node.address.name} ({node.zone})",
+                    "name": f"{node.address.name} ({node.zone}) | Véhicule: {visiting_truck}",
                     "zone": node.zone
                 })
             elif hasattr(node, 'depot_id'):
                 zone_markers.append({
                     "position": [node.longitude, node.latitude],
                     "color": [255, 0, 0],
-                    "name": f"🏭 {node.name} (DEPOT)",
+                    "name": f"🏭 {node.name} (DEPOT) | Flux Logistique",
                     "zone": "DEPOT"
                 })
         
         view_state = pdk.ViewState(latitude=47.93, longitude=1.9, zoom=10, pitch=45)
         arc_layer = pdk.Layer(
             "ArcLayer",
-            data=pydeck_lines,
+            data=filtered_lines,
             get_source_position="start",
             get_target_position="end",
             get_source_color="color",
@@ -561,13 +585,13 @@ if "solution" in st.session_state:
         else:
             total_orders, min_weight, max_weight = 0, 0, 0
 
-        report_data = f"""### RAPPORT DÉCISIONNEL - LOGISAGENT Industrial Edition (Industriel)
+        report_data = f"""### RAPPORT DÉCISIONNEL - LOGISAGENT Édition Industrielle
 --------------------------------------
 **Hub**: Orléans (Saran/Ormes)  
 **Date**: {datetime.now().strftime('%d/%m/%Y %H:%M')}  
-**Statut Trafic**: {'ALERTE CRITIQUE' if is_congested else 'FLUIDE'}  
-**Stratégie**: {strategy}
-**Résilience**: {resilience_level} (Marge {safety_margin}x)
+**Statut Trafic**: {'⚠️ ALERTE CRITIQUE' if is_congested else '✅ FLUIDE'}  
+**Stratégie**: {strategy}  
+**Résilience**: {resilience_level} (Marge {safety_margin}x)  
 
 #### 📊 RÉSULTATS CLÉS:
 - **Total Commandes**: {total_orders} colis
@@ -584,21 +608,21 @@ if "solution" in st.session_state:
 - **Robustesse**: Optimisée
 
 ---
-*Généré par LogisAgent DSS - Digital Twin Engine*
+*Généré par LogisAgent DSS - Moteur Digital Twin*
 """
         st.download_button(
             label="📩 Télécharger Rapport Décisionnel (Format Industriel .md)",
             data=report_data,
-            file_name=f"Rapport_LogisAgent_Industrial Edition_2_0_{datetime.now().strftime('%Y%m%d')}.md",
+            file_name=f"Rapport_LogisAgent_Edition_Industrielle_{datetime.now().strftime('%Y%m%d')}.md",
             mime="text/markdown",
             type="primary",
             use_container_width=True
         )
         
-        st.caption("✅ Rapport Markdown chuẩn Industrial Edition đã sẵn sàng. Bạn có thể mở bằng bất kỳ trình soạn thảo văn bản nào.")
+        st.caption("✅ Le rapport Markdown Industrial Edition est prêt. Il peut être ouvert avec n'importe quel éditeur de texte.")
 
     with tab4:
-        st.markdown("### 🧬 Analyse de Convergence (Ensemble Mode) - Industrial Edition")
+        st.markdown("### 🧬 Analyse de Convergence (Mode Ensemble) - Édition Industrielle")
         if "worker_results" in st.session_state and st.session_state.worker_results:
             import pandas as pd
             df_audit = pd.DataFrame(st.session_state.worker_results)
@@ -625,7 +649,7 @@ if "solution" in st.session_state:
                 - ❌ **Pénalités** : Coût virtuel élevé (ex: 2M pts) pour chaque commande non-livrée (Dropped) ou livraison prioritaire en retard.
                 - ⚖️ **Span** : Pénalité d'écart entre le camion le plus chargé et le moins chargé (pour équilibrer le travail).
                 
-                *Vous pouvez ajuster ces poids dans : `config/solver_params.json`*
+                *Vous pouvez ajuster ces paramètres dans : `config/solver_params.json`*
                 """)
                 
                 df_workers = pd.DataFrame(st.session_state.worker_results)
